@@ -247,20 +247,16 @@ public:
     void setFreq(double newFreq)
     {
         freqTarget = jlimit(20.0, 20000.0, newFreq);
-        updateCoefficients();
     }
 
     void setQ(double newQ)
     {
         qTarget = jlimit(0.1, 10.0, newQ);
-        updateCoefficients();
     }
 
     void setAmpdB(double newAmpdB)
     {
         ampdB = newAmpdB;
-
-        updateCoefficients();
     }
 
 private:
@@ -290,12 +286,23 @@ private:
     double a1 = 0.0;
     double a2 = 0.0;
     
+    int smoothingCount = 0;
+    const int SAMPLESFORSMOOTHING = 256;
+    
     void performSmoothing()
     {
         float alpha = 0.9999f;
         freqSmooth = alpha * freqSmooth + (1.f - alpha) * freqTarget;
         qSmooth    = alpha * qSmooth    + (1.f - alpha) * qTarget;
         
+        smoothingCount++;
+        if (smoothingCount >= SAMPLESFORSMOOTHING)
+        {
+            updateCoefficients();
+            smoothingCount = 0;
+        }
+        
+            
     }
     void updateCoefficients()
     {
