@@ -1,6 +1,7 @@
 /// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
 
-class EchoProcessor final : public BandProcessor
+class EchoProcessor final : public InsertProcessor
+
 {
 public:
     //Constructor with ID
@@ -26,7 +27,17 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
+    NotifiableAudioParameterFloat* feedbackParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+    
+    double sampleRate = 44100.0;
+    
+    SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
+    
+    FractionalDelay delayUnit;
+    
+    float z[2] = {0.f};
 };

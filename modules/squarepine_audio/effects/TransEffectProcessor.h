@@ -1,6 +1,6 @@
 /// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
 
-class TransEffectProcessor final : public BandProcessor
+class TransEffectProcessor final : public InsertProcessor
 {
 public:
     //Constructor with ID
@@ -23,7 +23,7 @@ public:
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     AudioParameterChoice* beatParam = nullptr;
-    NotifiableAudioParameterFloat* timeParam = nullptr;
+    NotifiableAudioParameterFloat* freqParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
@@ -31,6 +31,10 @@ private:
     
     int idNumber = 1;
 
-  
+    PhaseIncrementer phase;
+    
+    float wetSmooth[2] = {0.0};
+    float ampSmooth[2] = {1.0};
+    float depthSmooth[2] = {1.0};
 };
 
