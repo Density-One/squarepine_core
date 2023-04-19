@@ -56,9 +56,10 @@ inline void waitUntilTime (int64 targetTime, uint32 sleepThresholdMS = 0)
 }
 
 //==============================================================================
-/** */
-class BackgroundCaller final : private Thread,
-                               private AsyncUpdater
+/** Shouldn't be used as it creates new thread without ThreadPool and has a bug which asserts Thread destructor
+ * There's also alternativto use Thread.launch and pass the lambda as the argument */
+class BackgroundCaller final : public Thread,
+                               public AsyncUpdater
 {
 public:
     /** */
@@ -72,6 +73,8 @@ public:
     /** */
     ~BackgroundCaller() override
     {
+        // This is where the bug occurs
+        // if the line below is commented, we shouldn't have assert in Thread destructor as the task would be stopped
         if (! isBeingDeleted)
             shutdownThreadSafely (*this);
     }
@@ -79,7 +82,7 @@ public:
 private:
     std::atomic<bool> isBeingDeleted { false };
     std::function<void (void)> function;
-
+public:
     void run() override
     {
         function();
@@ -91,7 +94,7 @@ private:
         isBeingDeleted = true;
         delete this;
     }
-
+private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BackgroundCaller)
 };
 
