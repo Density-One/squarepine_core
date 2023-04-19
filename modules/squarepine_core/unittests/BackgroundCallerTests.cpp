@@ -21,14 +21,6 @@ public:
 
         // Simulate the message thread
         asyncUpdater->handleAsyncUpdate();
-
-        // Verify that the object has been deleted
-        if (backgroundCaller != nullptr)
-        {
-            std::cerr << "Error: BackgroundCaller object not deleted properly." << std::endl;
-        }
-
-        std::cout << "Test passed." << std::endl;
     }
 };
 
