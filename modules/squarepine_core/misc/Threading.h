@@ -73,8 +73,6 @@ public:
     /** */
     ~BackgroundCaller() override
     {
-        // This is where the bug occurs
-        // if the line below is commented, we shouldn't have assert in Thread destructor as the task would be stopped
         if (! isBeingDeleted)
             shutdownThreadSafely (*this);
     }
@@ -92,6 +90,7 @@ public:
     void handleAsyncUpdate() override
     {
         isBeingDeleted = true;
+        shutdownThreadSafely (*this);
         delete this;
     }
 private:
