@@ -21,6 +21,8 @@ public:
 
         // Simulate the message thread
         asyncUpdater->handleAsyncUpdate();
+
+        BackgroundCaller caller(testFunction);
     }
 };
 
