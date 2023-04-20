@@ -62,6 +62,6 @@ namespace sp
     #include "unittests/BackgroundCallerTests.cpp"
     #include "unittests/MathsUnitTests.cpp"
     #include "unittests/RNGUnitTests.cpp"
-    #include "unittests/SquarePineCoreUnitTestGatherer.cpp"
 #endif
+    #include "unittests/SquarePineCoreUnitTestGatherer.cpp"
     }
