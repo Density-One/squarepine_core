@@ -7,6 +7,37 @@
 namespace djdawprocessor
 {
 
+class LFODelay {
+    
+public:
+    
+    LFODelay (float delayMs,float modRate);
+    
+    float processSample(float x,int channel);
+
+    void prepare(float newFs);
+    
+    void setModDepth(float newModDepth);
+    
+private:
+    
+    float Fs;
+    float delayMs = 0.f;
+    float modRate = 0.f;
+    float modDepth = 0.f;
+    
+    float delaySamples = 1.f;
+    
+    static const int MAX_BUFFER_SIZE = 384000;
+    float delayBuffer[MAX_BUFFER_SIZE][2] = {{0.0f}};
+    int index[2] = {0,0};
+    
+    float currentAngle[2] = {0.0f,0.f};
+    float angleChange;
+    
+};
+
+
 class ModulatedDelay
 {
     // Use in situations when smoothing of the delay is unnecessary because it comes from an LFO
