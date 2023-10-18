@@ -31,8 +31,10 @@ private:
     float Fs = 48000.f;
 
     float feedbackGain = 0.f;
+    float feedbackSmooth[2] = {0.f};
 
     static const int NUMDELAYLINES = 16;
+    float scalar = 1.f/static_cast<float> (8.f);
 
     LFODelay* lfoDelayL[NUMDELAYLINES];
     LFODelay* lfoDelayR[NUMDELAYLINES];
@@ -169,6 +171,13 @@ private:
     
     const float DAMPAMOUNT = 1.f; // [0-1]
     DampeningFilter* damp[NUMDELAYLINES];
+    
+    float apfTimes[NUMDELAYLINES] = { 3.f, 8.f, 12.f, 13.f, 16.f, 22.f, 19.f, 29.f,
+        17.f, 41.f, 37.f, 24.f, 9.f, 33.f, 28.f, 11.f};
+    
+    float apfRate[NUMDELAYLINES] = { 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.8f,
+                                     0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
+    LFOAPF* apf[NUMDELAYLINES];
 };
 
 }

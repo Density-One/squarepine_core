@@ -18,6 +18,8 @@ FDN::FDN()
         lfoDelayL[i] = new LFODelay (delayMsL[i], modRate[i]);
         lfoDelayR[i] = new LFODelay (delayMsR[i], modRate[i]);
         damp[i] = new DampeningFilter (DAMPAMOUNT);
+        apf[i] = new LFOAPF (apfTimes[i], apfRate[i]);
+        apf[i]->setFeedbackAmount(0.8f);
     }
     
 }
@@ -30,6 +32,7 @@ FDN::~FDN()
         delete lfoDelayL[i];
         delete lfoDelayR[i];
         delete damp[i];
+        delete apf[i];
     }
 }
 
@@ -42,6 +45,8 @@ float FDN::processSample (float x, int channel)
     {
         // Input to delay lines
         inDL[n] = x + fb[n][channel];
+        
+        inDL[n] = apf[n]->processSample(inDL[n],channel); // diffusion
         // Output of delay lines
         if (channel == 0)
         {
@@ -64,11 +69,12 @@ float FDN::processSample (float x, int channel)
         {
             val += outDL[c] * matrix[r][c];
         }
-        val *= feedbackGain;
+        val *= feedbackSmooth[channel];
         val = damp[r]->process (val, channel);
-        fb[r][channel] =  tanh (0.5f * val); // prevent instability/ringing
+        fb[r][channel] = scalar * tanh (0.9f * val); // prevent instability/ringing
     }
 
+    feedbackSmooth[channel] = 0.999f * feedbackSmooth[channel] + 0.001f * feedbackGain;
     return y;
 }
 
@@ -79,16 +85,20 @@ void FDN::prepareToPlay (double sampleRate, int /*samplesPerBlock*/)
     {
         lfoDelayL[n]->prepare (Fs);
         lfoDelayR[n]->prepare (Fs);
+        apf[n]->prepare(Fs);
     }
     setModDepth(modDepth);
 }
 
-void FDN::setFeedbackGain (float newFeedbackGain)
+void FDN::setFeedbackGain (float normVal)
 {
-    if (feedbackGain != newFeedbackGain)
+    feedbackGain = 0.25f * normVal + 0.02f;
+    float diffusion = 0.5f * normVal + 0.4f;
+    for (int i = 0; i < NUMDELAYLINES; i++)
     {
-        feedbackGain = newFeedbackGain;
+        apf[i]->setFeedbackAmount (diffusion);
     }
+    
 }
 
 void FDN::setModDepth (float newModDepth)
@@ -100,6 +110,7 @@ void FDN::setModDepth (float newModDepth)
         {
             lfoDelayL[n]->setModDepth (newModDepth);
             lfoDelayR[n]->setModDepth (newModDepth);
+            apf[n]->setModDepth (newModDepth);
         }
     //}
 }

@@ -65,6 +65,31 @@ void LFODelay::setModDepth(float newModDepth){
     }
 }
 
+LFOAPF::LFOAPF(float d_Ms,float m_Rate){
+    delayBlock = new LFODelay (d_Ms, m_Rate);
+}
+
+LFOAPF::~LFOAPF(){
+    delete delayBlock;
+}
+
+float LFOAPF::processSample (float x, int channel)
+{
+    float y = -feedbackAmount * x + feedbackSample[channel];
+    feedbackSample[channel] = delayBlock->processSample(x + feedbackAmount * feedbackSample[channel], channel);
+    return y;
+}
+
+void LFOAPF::prepare(float newFs){
+    Fs = newFs;
+    delayBlock->prepare (newFs);
+}
+
+
+void LFOAPF::setModDepth(float newModDepth)
+{
+    delayBlock->setModDepth (newModDepth);
+}
 
 float ModulatedDelay::processSample (float x, int channel)
 {
@@ -112,7 +137,7 @@ float ModulatedDelay::processSample (float x, int channel)
 
 void ModulatedDelay::setFs (float _Fs)
 {
-    this->Fs = _Fs;
+    Fs = _Fs;
 }
 
 void ModulatedDelay::setDelaySamples (float _delay)
