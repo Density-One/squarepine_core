@@ -6,10 +6,13 @@ namespace djdawprocessor
 
 LimiterProcessor::LimiterProcessor()
 {
-    setThreshold (-0.1f);
     setKnee (1.5f);
-    setInputGain (0.f);
-    setOutputGain (-0.1f);
+    setInputGain (6.f);
+    setTruePeakOn (true);
+    setOversampling (true);
+    setOverSamplingLevel (2);
+    setEnhanceAmount (0);
+    setCeiling (-0.1f);
 }
 
 void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
@@ -95,6 +98,8 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
                 lookaheadBuffer.getWritePointer (1)[i] = yR;
             }
         }
+
+        applySmoothGain (buffer, additionalGainReduction, additionalGainSmooth);
     }
     else
     {
@@ -381,7 +386,7 @@ void LimiterProcessor::setInputGain (float inputGain_dB)
 
 float LimiterProcessor::getInputGain()
 {
-    return 20.f * log10 (outputGain);
+    return 20.f * log10 (inputGain);
 }
 
 void LimiterProcessor::setOutputGain (float outputGain_dB)
@@ -392,6 +397,15 @@ void LimiterProcessor::setOutputGain (float outputGain_dB)
 float LimiterProcessor::getOutputGain()
 {
     return 20.f * log10 (outputGain);
+}
+void LimiterProcessor::setCeiling (float ceiling_dB)
+{
+    ceiling = std::pow (10.f, ceiling_dB / 20.f);
+    if (ceiling > linThresh)
+    {
+        float delta = linThresh - ceiling;
+        additionalGainReduction = std::pow (10.f, -(delta));
+    }
 }
 
 float LimiterProcessor::getGainReduction (bool linear)

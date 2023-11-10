@@ -47,6 +47,9 @@ public:
     void setOverSamplingLevel (int level) { OSFactor = level; }
 
     float getGainReduction (bool linear);
+    
+    void setCeiling(float ceiling_dB);
+    float getCeiling();
 private:
     bool bypassed = false;
 
@@ -68,6 +71,11 @@ private:
     float inputGainSmooth = 1.f;
     float inputInvSmooth = 1.f;
     float outputGainSmooth = 1.f;
+    float additionalGainReduction = 1.0f;
+    float additionalGainSmooth = 1.0f;
+    
+    float ceiling = -0.1f;
+    
     void applySmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
 
     bool constantGainMonitoring = false;
