@@ -71,13 +71,14 @@ private:
     float inputGainSmooth = 1.f;
     float inputInvSmooth = 1.f;
     float outputGainSmooth = 1.f;
-    float additionalGainReduction = 1.0f;
-    float additionalGainSmooth = 1.0f;
     
+
     float ceiling = -0.1f;
     
     void applySmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
-
+    float applyCeilingReduction(float& value, bool isLeft);
+    
+    
     bool constantGainMonitoring = false;
 
     float alphaA = 0.999f;// smoothing parameter for attack
@@ -88,6 +89,14 @@ private:
 
     std::atomic<float> linA = 1.0f;// Linear gain multiplied by the input signal at the end of the detection path
 
+    std::atomic<float> gainReduction = 1.0f;
+    
+    float additionalGainReductionL = 0.f;
+    float additionalGainReductionR = 0.f;
+    float additionalGainReductionSmoothL = 0.f;
+    float additionalGainReductionSmoothR = 0.f;
+
+    
     bool truePeakIsOn = true;
     TruePeakAnalysis truePeakAnalysis;
     AudioBuffer<float> truePeakFrameBuffer;

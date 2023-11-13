@@ -12,6 +12,7 @@ LimiterProcessor::LimiterProcessor()
     setOversampling (true);
     setOverSamplingLevel (2);
     setEnhanceAmount (0);
+    setThreshold (-3.0f);
     setCeiling (-0.1f);
 }
 
@@ -98,8 +99,6 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
                 lookaheadBuffer.getWritePointer (1)[i] = yR;
             }
         }
-
-        applySmoothGain (buffer, additionalGainReduction, additionalGainSmooth);
     }
     else
     {
@@ -178,6 +177,34 @@ void LimiterProcessor::processStereoSample (float xL, float xR, float detectSamp
     outputGainSmooth = 0.999f * outputGainSmooth + 0.001f * outputGain;
     yL *= outputGainSmooth;
     yR *= outputGainSmooth;
+
+    auto leftReduction = applyCeilingReduction (yL, true);
+    auto rightReduction = applyCeilingReduction (yR, false);
+
+    auto extraReduction = jmax (leftReduction, rightReduction);
+    gainReduction = linA + extraReduction;
+}
+float LimiterProcessor::applyCeilingReduction (float& value, bool isLeft)
+{
+    if (value > ceiling)
+    {
+        float additionalDelta = 20 * std::log10 (value / ceiling);
+        if (isLeft)
+        {
+            additionalGainReductionL = std::powf (10.0f, (-additionalDelta) / 20.0f);
+            additionalGainReductionSmoothL = 0.999f * additionalGainReductionSmoothL + 0.001f * additionalGainReductionL;
+            value *= additionalGainReductionSmoothL;
+            return additionalGainReductionSmoothL;
+        }
+        else
+        {
+            additionalGainReductionR = std::powf (10.0f, (-additionalDelta) / 20.0f);
+            additionalGainReductionSmoothR = 0.999f * additionalGainReductionSmoothR + 0.001f * additionalGainReductionR;
+            value *= additionalGainReductionSmoothR;
+            return additionalGainReductionSmoothR;
+        }
+    }
+    return 0.f;
 }
 
 float LimiterProcessor::processSample (float x, float detectSample, int channel)
@@ -401,20 +428,15 @@ float LimiterProcessor::getOutputGain()
 void LimiterProcessor::setCeiling (float ceiling_dB)
 {
     ceiling = std::pow (10.f, ceiling_dB / 20.f);
-    if (ceiling > linThresh)
-    {
-        float delta = linThresh - ceiling;
-        additionalGainReduction = std::pow (10.f, -(delta));
-    }
 }
 
 float LimiterProcessor::getGainReduction (bool linear)
 {
     if (linear)
-        return linA;
+        return gainReduction;
     // This method can be find the amount of gain reduction at a given time
     // if the interface has a meter or display.
-    return 20.f * log10 (linA);
+    return 20.f * log10 (gainReduction);
 }
 
 float LimiterProcessor::enhanceProcess (float x)
