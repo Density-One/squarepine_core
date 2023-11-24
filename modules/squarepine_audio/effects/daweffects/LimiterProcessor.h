@@ -47,6 +47,8 @@ public:
     void setOverSamplingLevel (int level);
 
     float getGainReduction (bool linear);
+    
+    void reset();
 private:
     bool bypassed = false;
 
