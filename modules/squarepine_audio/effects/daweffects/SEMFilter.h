@@ -163,7 +163,6 @@ private:
     float s1[2] = { 0.0f };
     float s2[2] = { 0.0f };
 public:
-
     void updateCoefficients()
     {
         R = 1.f / (2.f * resSmooth.getNextValue());
