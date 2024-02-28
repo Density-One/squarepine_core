@@ -1,4 +1,3 @@
-
 // This model is based on the Virtual Analog analysis
 // by Will Pirkle in Ch 7 of Designing Synthesizer Software textbook
 
@@ -487,7 +486,7 @@ public:
     {
         reset();
 
-        NormalisableRange<float> freqRange = { -1.f, 1.f };
+        NormalisableRange<float> freqRange = { -0.7670f, 0.899667f };
         auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM", "Frequency", freqRange, 0.0f,
                                                                          true,// isAutomatable
                                                                          "Cut-off",
@@ -501,16 +500,20 @@ public:
                                                                              {
                                                                                  float posFreq = value + 1.f;
                                                                                  float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
+                                                                                 if (approximatelyEqual (freqHz, 100.f))
+                                                                                     freqHz = 100;
                                                                                  return String (freqHz, 0);
                                                                              }
                                                                              else
                                                                              {
                                                                                  float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
+                                                                                 if (approximatelyEqual (freqHz, 10000.f))
+                                                                                     freqHz = 10000;
                                                                                  return String (freqHz, 0);
                                                                              }
                                                                          });
 
-        NormalisableRange<float> qRange = { 0.1f, 10.f };
+        NormalisableRange<float> qRange = { 0.1f, 5.f };
         auto res = std::make_unique<NotifiableAudioParameterFloat> ("resSEM", "resonance", qRange, 0.7071f,
                                                                     true,// isAutomatable
                                                                     "Q",
