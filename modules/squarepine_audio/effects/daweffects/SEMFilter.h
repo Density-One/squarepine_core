@@ -598,11 +598,11 @@ public:
         }
         else
         {// Resonance change
-            value = jmax(value,0.01f);
+            value = jmax (value, 0.01f);
 
             lpf.setQValue (value);
-            
-            hpf1.setQValue (jmap(value,0.01f,10.f,5.f,0.01f));
+
+            hpf1.setQValue (jmap (value, 0.01f, 10.f, 5.f, 0.01f));
         }
     }
 
@@ -666,12 +666,12 @@ public:
     }
 
     // Allowable range from 0.01f to ~10
-    void setQValue (float q)
+    void setQValue (float)
     {
-//        resParam->setValueNotifyingHost (q);
-//        lpf.setQValue (q);
-//        hpf1.setQValue (q);
-//        hpf2.setQValue (q);
+        //        resParam->setValueNotifyingHost (q);
+        //        lpf.setQValue (q);
+        //        hpf1.setQValue (q);
+        //        hpf2.setQValue (q);
     }
     void setID (int idNum)
     {
