@@ -702,4 +702,519 @@ private:
     SEMHighPassFilter hpf1, hpf2;
 };
 
+///-------------------------------------------------------
+///-------------------------------------------------------
+///-------------------------------------------------------
+///-------------------------------------------------------
+///-------------------------------------------------------
+///-------------------------------------------------------
+
+struct Biquad
+{
+    double A, w0, alpha, cw, sw, Fs, f0, dBgain, a0, a1, a2, b0, b1, b2;
+    double x1, x2, y1, y2;
+public:
+    typedef std::complex<double> Complex;
+    Biquad (double sampleRate)
+        : A (0),
+          w0 (0),
+          alpha (0),
+          cw (0),
+          sw (0),
+          Fs (sampleRate),
+          f0 (0),
+          dBgain (0),
+          a0 (0),
+          a1 (0),
+          a2 (0),
+          b0 (0),
+          b1 (0),
+          b2 (0),
+          x1 (0),
+          x2 (0),
+          y1 (0),
+          y2 (0)
+    {
+    }
+
+    void set_LPF (double frequency, double Q)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sin (w0) / (2.0 * Q);
+        b0 = (1.0 - cw) / 2.0;
+        b1 = 1.0 - cw;
+        b2 = (1.0 - cw) / 2.0;
+        a0 = 1.0 + alpha;
+        a1 = -2.0 * cw;
+        a2 = 1.0 - alpha;
+    }
+    void set_HPF (double frequency, double Q)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sin (w0) / (2.0 * Q);
+        b0 = (1.0 + cw) / 2.0;
+        b1 = -(1.0 + cw);
+        b2 = (1.0 + cw) / 2.0;
+        a0 = 1.0 + alpha;
+        a1 = -2.0 * cw;
+        a2 = 1.0 - alpha;
+    }
+    void set_BPF (double frequency, double Q)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sin (w0) / (2.0 * Q);
+        //    b0 = Q*alpha;
+        b0 = sw / float (2.0);
+        b1 = 0.0;
+        b2 = -Q * alpha;
+        a0 = 1.0 + alpha;
+        a1 = -2.0 * cw;
+        a2 = 1.0 - alpha;
+    }
+    void set_BPF_const_gain (double frequency, double Q)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sin (w0) / (2.0 * Q);
+        b0 = alpha;
+        b1 = 0;
+        b2 = -alpha;
+        a0 = 1 + alpha;
+        a1 = -2 * cw;
+        a2 = 1 - alpha;
+    }
+    void set_BAND_REJECT (double frequency, double Q)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sin (w0) / (2.0 * Q);
+        b0 = 1;
+        b1 = -2 * cw;
+        b2 = 1;
+        a0 = 1 + alpha;
+        a1 = -2 * cw;
+        a2 = 1 - alpha;
+    }
+    void set_ALL (double frequency, double Q)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sin (w0) / (2.0 * Q);
+        b0 = 1 - alpha;
+        b1 = -2 * cw;
+        b2 = 1 + alpha;
+        a0 = 1 + alpha;
+        a1 = -2 * cw;
+        a2 = 1 - alpha;
+    }
+    void set_LOWSHELF (double frequency, double S)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sw / 2 * sqrt ((A + 1 / A) * (1 / S - 1) + 2);
+        b0 = A * ((A + 1) - (A - 1) * cw + 2 * sqrt (A) * alpha);
+        b1 = 2 * A * ((A - 1) - (A + 1) * cw);
+        b2 = A * ((A + 1) - (A - 1) * cw - 2 * sqrt (A) * alpha);
+        a0 = (A + 1) + (A - 1) * cw + 2 * sqrt (A) * alpha;
+        a1 = -2 * ((A - 1) + (A + 1) * cw);
+        a2 = (A + 1) + (A - 1) * cw - 2 * sqrt (A) * alpha;
+    }
+    void set_HIGHSHELF (double frequency, double S)
+    {
+        A = 0;
+        f0 = frequency;
+        w0 = 2.0 * MathConstants<double>::pi * (f0 / Fs);
+        cw = cos (w0);
+        sw = sin (w0);
+        alpha = sw / 2 * sqrt ((A + 1 / A) * (1 / S - 1) + 2);
+        b0 = A * ((A + 1) + (A - 1) * cw + 2 * sqrt (A) * alpha);
+        b1 = -2 * A * ((A - 1) + (A + 1) * cw);
+        b2 = A * ((A + 1) + (A - 1) * cw - 2 * sqrt (A) * alpha);
+        a0 = (A + 1) - (A - 1) * cw + 2 * sqrt (A) * alpha;
+        a1 = 2 * ((A - 1) - (A + 1) * cw);
+        a2 = (A + 1) - (A - 1) * cw - 2 * sqrt (A) * alpha;
+    }
+
+    void process (const float* in, float* out, int frameSize)
+    {
+        while (--frameSize >= 0)
+        {
+            double x0 = *in;
+            double y0;
+            y0 = (b0 / a0) * x0 + (b1 / a0) * x1 + (b2 / a0) * x2 - (a1 / a0) * y1 - (a2 / a0) * y2;
+            x2 = x1;
+            x1 = x0;
+            y2 = y1;
+            y1 = y0;
+            *out = y0;
+            ++in;
+            ++out;
+        }
+    }
+};
+
+class ButterworthHighpassFilter
+{
+public:
+    ButterworthHighpassFilter()
+        : sampleRate (48000),
+          cutoffFrequency (1),
+          qFactor (0.707)// Default values
+    {
+        updateCoefficients();
+    }
+
+    ButterworthHighpassFilter (double sr, double cutoff, double q)
+        : sampleRate (sr),
+          cutoffFrequency (cutoff),
+          qFactor (q)
+    {
+        updateCoefficients();
+    }
+
+    ~ButterworthHighpassFilter() {}
+
+    void setSampleRate (double newSampleRate)
+    {
+        sampleRate = newSampleRate;
+        updateCoefficients();
+    }
+    void prepareToPlay (double Fs, int)
+    {
+        sampleRate = (float) Fs;
+        normFreqSmooth.reset (sampleRate, 0.0001);
+        resSmooth.reset (sampleRate, 0.0001);
+        updateCoefficients();
+    }
+    void setNormFreq (float newNormFreq)
+    {
+        if (targetFreq != newNormFreq)
+        {
+            targetFreq = newNormFreq;
+            normFreqSmooth.setTargetValue (targetFreq);
+            updateCoefficients();
+        }
+    }
+
+    void setQValue (float q)
+    {
+        if (targetRes != q)
+        {
+            targetRes = q;
+            resSmooth.setTargetValue (targetRes);
+            updateCoefficients();
+        }
+    }
+
+    float processSample (float input, int channel)
+    {
+        if (channel == 0)// Left channel
+        {
+            return processSampleInternal (input, x1[0], x2[0]);
+        }
+        else if (channel == 1)// Right channel
+        {
+            return processSampleInternal (input, x1[1], x2[1]);
+        }
+        else
+        {
+            // Invalid channel index
+            return input;
+        }
+    }
+    void updateCoefficients()
+    {
+        float normFreq = normFreqSmooth.getNextValue();
+        double cutoffFreqHz = normFreq * (sampleRate / 2.0);
+        double w0 = 2.0 * MathConstants<double>::pi * cutoffFreqHz / sampleRate;
+        double alpha = sin (w0) / (2.0 * resSmooth.getNextValue());
+        double cosw0 = cos (w0);
+
+        b0 = (1.0 + cosw0) / 2.0;
+        b1 = -(1.0 + cosw0);
+        b2 = (1.0 + cosw0) / 2.0;
+        a1 = -2.0 * cosw0;
+        a2 = 1.0 - alpha;
+
+        // Normalize the coefficients
+        double a0_inv = 1.0 / (1.0 + alpha);
+        b0 *= a0_inv;
+        b1 *= a0_inv;
+        b2 *= a0_inv;
+        a1 *= a0_inv;
+        a2 *= a0_inv;
+    }
+private:
+    double sampleRate;
+    double cutoffFrequency;
+    double qFactor;
+    double a1, a2, b0, b1, b2;
+    float x1[2] = { 0.0f, 0.0f }, x2[2] = { 0.0f, 0.0f };
+    float targetFreq = 0.0f;
+    float targetRes = 0.1f;
+    SmoothedValue<float, ValueSmoothingTypes::Linear> normFreqSmooth { 0.0f };
+    SmoothedValue<float, ValueSmoothingTypes::Linear> resSmooth { 0.7071f };
+
+    float processSampleInternal (float input, float& x1, float& x2)
+    {
+        // Direct Form II implementation
+        double v0 = input - (x1 * a1) - (x2 * a2);
+        double output = (v0 * b0) + (x1 * b1) + (x2 * b2);
+
+        x2 = x1;
+        x1 = input;
+
+        return static_cast<float> (output);
+    }
+};
+
+class ButterSem final : public InternalProcessor,
+                        public AudioProcessorParameter::Listener
+{
+public:
+    ButterSem (int idNum = 1)
+        : idNumber (idNum)
+    {
+        reset();
+        // These values represent 100hz and 8000hz respectively
+        NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
+
+        // call back to convert a value to a display string in Hz
+        auto stringFromValue = [] (float value, int) -> String
+        {
+            // TODO: use approximatelyEqual when it's finally fixed
+            if (abs (value) < 0.0001f)
+                return "BYP";
+
+            if (value < 0.0f)
+            {
+                // low-pass filter
+                float posFreq = value + 1.f;
+                float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
+                // For now, use int for min
+                if (static_cast<int> (freqHz) == 100)
+                    freqHz = 100;
+                return String (freqHz, 0);
+            }
+            else
+            {
+                // hi-pass filter
+                float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
+                // For now, use int for max
+                if (static_cast<int> (freqHz) == 8000)
+                    freqHz = 8000;
+                return String (freqHz, 0);
+            }
+        };
+
+        auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM",
+                                                                         "Frequency",
+                                                                         freqRange,
+                                                                         0.0f,
+                                                                         true,// isAutomatable
+                                                                         "Cut-off",
+                                                                         AudioProcessorParameter::genericParameter,
+                                                                         stringFromValue);
+
+        NormalisableRange<float> qRange = { 0.0f, 10.f };
+        auto res = std::make_unique<NotifiableAudioParameterFloat> ("resSEM", "resonance", qRange, 0.7071f,
+                                                                    true,// isAutomatable
+                                                                    "Q",
+                                                                    AudioProcessorParameter::genericParameter,
+                                                                    [] (float value, int) -> String
+                                                                    {
+                                                                        if (approximatelyEqual (value, 0.1f))
+                                                                            return "0.1";
+
+                                                                        if (approximatelyEqual (value, 10.f))
+                                                                            return "10";
+
+                                                                        return String (value, 1);
+                                                                    });
+
+        setPrimaryParameter (normFreqParam);
+        normFreqParam = normFreq.get();
+        normFreqParam->addListener (this);
+
+        resParam = res.get();
+        resParam->addListener (this);
+
+        auto layout = createDefaultParameterLayout (false);
+        layout.add (std::move (normFreq));
+        layout.add (std::move (res));
+        apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
+    }
+
+    ~ButterSem() override
+    {
+        normFreqParam->removeListener (this);
+        resParam->removeListener (this);
+    }
+
+    void prepareToPlay (double Fs, int bufferSize) override
+    {
+        const ScopedLock sl (getCallbackLock());
+        lpf.prepareToPlay (Fs, bufferSize);
+        hpf.prepareToPlay (Fs, bufferSize);
+        mixLPF.reset (Fs, 0.001f);
+        mixHPF.reset (Fs, 0.001f);
+        setRateAndBufferSizeDetails (Fs, bufferSize);
+    }
+
+    //==============================================================================
+    /** @internal */
+    const String getName() const override { return TRANS ("Butter Sem"); }
+    /** @internal */
+    Identifier getIdentifier() const override { return "Butter Sem" + String (idNumber); }
+    /** @internal */
+    bool supportsDoublePrecisionProcessing() const override { return false; }
+
+    void parameterValueChanged (int paramNum, float value) override
+    {
+        const ScopedLock sl (getCallbackLock());
+        if (paramNum == 1)
+        {
+            // Frequency change
+            lpf.setNormFreq (jmin (1.f, value + 1.f));
+            hpf.setNormFreq (jmax (0.0001f, value));
+
+            // if cutoff is set to bypass mode, switch off both processing
+            // TODO: use approximatelyEqual when it's finally fixed
+            if (abs (value) < 0.0001f)
+            {
+                mixLPF.setTargetValue (0.f);
+                mixHPF.setTargetValue (0.f);
+            }
+            else if (value < 0.f)
+            {
+                mixLPF.setTargetValue (1.f);
+                mixHPF.setTargetValue (0.f);
+            }
+            else if (value > 0.f)
+            {
+                mixLPF.setTargetValue (0.f);
+                mixHPF.setTargetValue (1.f);
+            }
+        }
+        else
+        {// Resonance change
+            lpf.setQValue (value);
+            hpf.setQValue (value);
+        }
+    }
+
+    void parameterGestureChanged (int, bool) override {}
+
+    void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override { process (buffer); }
+    //void processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer&) override  { process (buffer); }
+
+    void process (juce::AudioBuffer<float>& buffer)
+    {
+        // If the device is turned off, don't process
+        if (isBypassed())
+            return;
+
+        // If the current value is 0.0, also bypass
+        if (abs (normFreqParam->get()) < 0.0001f)
+            return;
+
+        lpf.updateCoefficients();
+        hpf.updateCoefficients();
+
+        const auto numChannels = buffer.getNumChannels();
+        const auto numSamples = buffer.getNumSamples();
+
+        const ScopedLock sl (getCallbackLock());
+
+        float x, y, mix, hpv;
+        for (int c = 0; c < numChannels; ++c)
+        {
+            for (int s = 0; s < numSamples; ++s)
+            {
+                mix = mixLPF.getNextValue();
+                x = buffer.getWritePointer (c)[s];
+                y = (1.f - mix) * x + mix * lpf.processSample (x, c);
+
+                mix = mixHPF.getNextValue();
+                hpv = (float) hpf.processSample (y, c);
+                y = (1.f - mix) * y + mix * hpv;
+                buffer.getWritePointer (c)[s] = y;
+            }
+        }
+    }
+
+    void setNormFreq (float newNormFreq)
+    {
+        normFreqParam->setValueNotifyingHost (newNormFreq);
+        lpf.setNormFreq (newNormFreq);
+        hpf.setNormFreq (newNormFreq);
+
+        if (newNormFreq < 0.f)
+        {
+            mixLPF.setTargetValue (1.f);
+            mixHPF.setTargetValue (0.f);
+        }
+        else if (newNormFreq > 0.f)
+        {
+            mixLPF.setTargetValue (0.f);
+            mixHPF.setTargetValue (1.f);
+        }
+        else
+        {
+            mixLPF.setTargetValue (0.f);
+            mixHPF.setTargetValue (0.f);
+        }
+    }
+
+    // Allowable range from 0.01f to ~10
+    void setQValue (float q)
+    {
+        resParam->setValueNotifyingHost (q);
+        lpf.setQValue (q);
+        hpf.setQValue (q);
+    }
+    void setID (int idNum)
+    {
+        idNumber = idNum;
+    }
+private:
+    //==============================================================================
+    AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    NotifiableAudioParameterFloat* normFreqParam = nullptr;
+    NotifiableAudioParameterFloat* resParam = nullptr;
+
+    SmoothedValue<float, ValueSmoothingTypes::Linear> mixLPF { 0.0f };
+    SmoothedValue<float, ValueSmoothingTypes::Linear> mixHPF { 0.0f };
+
+    int idNumber = 1;
+
+    SEMLowPassFilter lpf;
+    ButterworthHighpassFilter hpf;
+};
+
 }
