@@ -61,14 +61,14 @@ SpiralProcessor::SpiralProcessor (int idNum)
 
     lsf.setFilterType (DigitalFilter::FilterType::LSHELF);
     lsf.setFreq (1000.0f);
-    lsf.setQ (0.3f);
+    lsf.setQValue (0.3f);
     lsf.setAmpdB (-3.0f);
     
     setEffectiveInTimeDomain (true);
 
     hsf.setFilterType (DigitalFilter::FilterType::HSHELF);
     hsf.setFreq (15000.0f);
-    hsf.setQ (0.3f);
+    hsf.setQValue (0.3f);
     hsf.setAmpdB (-3.0f);
 
 }

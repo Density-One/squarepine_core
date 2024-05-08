@@ -91,7 +91,7 @@ void SpaceProcessor::prepareToPlay (double sampleRate, int)
     reverb.setSampleRate (sampleRate);
     filter.setFs (sampleRate);
     filter.setFilterType (DigitalFilter::FilterType::PEAK);
-    filter.setQ (0.5f);
+    filter.setQValue (0.5f);
 }
 
 void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midiBuffer)

@@ -60,10 +60,10 @@ NoiseProcessor::NoiseProcessor (int idNum)
 
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
     hpf.setFreq (INITHPF);
-    hpf.setQ (DEFAULTQ);
+    hpf.setQValue (DEFAULTQ);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (INITLPF);
-    lpf.setQ (DEFAULTQ);
+    lpf.setQValue (DEFAULTQ);
 }
 
 NoiseProcessor::~NoiseProcessor()
@@ -148,8 +148,8 @@ void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
                 float freqHz = std::powf (10.f, value * 3.2f + 1.f);// 10 - 16000
                 hpf.setFreq (freqHz);
                 lpf.setFreq (INITLPF);
-                lpf.setQ (DEFAULTQ);
-                hpf.setQ (RESQ);
+                lpf.setQValue (DEFAULTQ);
+                hpf.setQValue (RESQ);
             }
             else
             {
@@ -157,8 +157,8 @@ void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
                 float freqHz = 2.f * std::powf (10.f, normValue * 3.f + 1.f) + 30.f;// 20030 -> 50
                 lpf.setFreq (freqHz);
                 hpf.setFreq (INITHPF);
-                hpf.setQ (DEFAULTQ);
-                lpf.setQ (RESQ);
+                hpf.setQValue (DEFAULTQ);
+                lpf.setQValue (RESQ);
             }
             break;
         }
