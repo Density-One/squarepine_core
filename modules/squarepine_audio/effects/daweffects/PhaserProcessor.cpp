@@ -78,11 +78,11 @@ PhaserProcessor::PhaserProcessor (int idNum)
     phaseWarble.setFrequency (2.f);
 
     apf1.setFilterType (DigitalFilter::FilterType::APF);
-    apf1.setQ (1.f);
+    apf1.setQValue (1.f);
     apf2.setFilterType (DigitalFilter::FilterType::APF);
-    apf2.setQ (1.f);
+    apf2.setQValue (1.f);
     apf3.setFilterType (DigitalFilter::FilterType::APF);
-    apf3.setQ (1.f);
+    apf3.setQValue (1.f);
 }
 
 PhaserProcessor::~PhaserProcessor()

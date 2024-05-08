@@ -19,8 +19,8 @@ public:
         filter2.setFilterType (type);
         filter1.setFreq (cutoffFreq);
         filter2.setFreq (cutoffFreq);
-        filter1.setQ (0.7071f);
-        filter2.setQ (0.7071f);
+        filter1.setQValue (0.7071f);
+        filter2.setQValue (0.7071f);
     }
 
     void prepareToPlay (double Fs, int)

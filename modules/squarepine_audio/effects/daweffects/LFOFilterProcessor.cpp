@@ -77,7 +77,7 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     phaseWarble.setFrequency (3.f);
 
     bpf.setFilterType (DigitalFilter::FilterType::BPF2);
-    bpf.setQ (3.0f);
+    bpf.setQValue (3.0f);
 }
 
 LFOFilterProcessor::~LFOFilterProcessor()
