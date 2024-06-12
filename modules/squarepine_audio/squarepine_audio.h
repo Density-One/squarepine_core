@@ -178,6 +178,7 @@ String getInternalProcessorTypeName();
 #include "effects/daweffects/PingPongProcessor.h"
 #include "effects/daweffects/SpiralProcessor.h"
 #include "effects/daweffects/ShimmerProcessor.h"
+#include "effects/daweffects/FDN.h"
 #include "effects/daweffects/ReverbProcessor.h"
 #include "effects/daweffects/LFOFilterProcessor.h"
 #include "effects/daweffects/FlangerProcessor.h"

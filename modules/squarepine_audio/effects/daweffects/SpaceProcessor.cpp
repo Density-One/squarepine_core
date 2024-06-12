@@ -53,6 +53,8 @@ SpaceProcessor::SpaceProcessor (int idNum)
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
+    wetDry.setTargetValue (wetDryParam->get());
+
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
@@ -71,9 +73,12 @@ SpaceProcessor::SpaceProcessor (int idNum)
 
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
+    dampLPF.setFilterType (DigitalFilter::FilterType::LPF);
+    dampLPF.setFreq (13000.f);
+    dampLPF.setQ (0.2f);
+
     setPrimaryParameter (reverbColourParam);
     setEffectiveInTimeDomain (true);
-
 }
 
 SpaceProcessor::~SpaceProcessor()
@@ -85,10 +90,14 @@ SpaceProcessor::~SpaceProcessor()
 }
 
 //============================================================================== Audio processing
-void SpaceProcessor::prepareToPlay (double sampleRate, int)
+void SpaceProcessor::prepareToPlay (double sampleRate, int bufferSize)
 {
-    reverb.reset();
-    reverb.setSampleRate (sampleRate);
+    //reverb.reset();
+    //reverb.setSampleRate (sampleRate);
+    wetDry.reset (sampleRate, 0.5f);
+    processedBuffer = AudioBuffer<float> (2, bufferSize);
+    reverb.prepareToPlay (sampleRate, bufferSize);
+    dampLPF.setFs (sampleRate);
     filter.setFs (sampleRate);
     filter.setFilterType (DigitalFilter::FilterType::PEAK);
     filter.setQ (0.5f);
@@ -109,26 +118,47 @@ void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         return;
 
     updateReverbParams();
+    
+    for (int c = 0; c < numChannels; ++c)
+        processedBuffer.copyFrom(c, 0, buffer.getWritePointer (c), numSamples);
+    
+    filter.processBuffer (processedBuffer, midiBuffer);
+    dampLPF.processBuffer (processedBuffer, midiBuffer);
 
-    filter.processBuffer (buffer, midiBuffer);
-
-    auto chans = buffer.getArrayOfWritePointers();
+    //auto chans = buffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
-    switch (numChannels)
+    //    switch (numChannels)
+    //    {
+    //        case 1:
+    //            reverb.processMono (chans[0], numSamples);
+    //            break;
+    //
+    //        case 2:
+    //            reverb.processStereo (chans[0], chans[1], numSamples);
+    //            break;
+    //
+    //        default:
+    //            break;
+    //    }
+    float wet;
+    float dry;
+    for (int s = 0; s < numSamples; ++s)
     {
-        case 1:
-            reverb.processMono (chans[0], numSamples);
-            break;
-
-        case 2:
-            reverb.processStereo (chans[0], chans[1], numSamples);
-            break;
-
-        default:
-            break;
+        wet = wetDry.getNextValue();
+        dry = 1.f - wet;
+        for (int c = 0; c < numChannels; ++c)
+        {
+            float x = processedBuffer.getWritePointer (c)[s];
+            float y = reverb.processSample (x, c);
+            processedBuffer.getWritePointer (c)[s] = wet * y;
+            buffer.getWritePointer (c)[s] *= dry;
+        }
     }
+    
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, processedBuffer.getWritePointer (c), numSamples);
 }
 
 const String SpaceProcessor::getName() const { return TRANS ("Space"); }
@@ -142,6 +172,10 @@ void SpaceProcessor::parameterValueChanged (int id, float value)
     if (id == 1)
     {
         setBypass (value > 0);
+    }
+    if (id == 2)
+    {
+        wetDry.setTargetValue (value);
     }
     if (id == 3)// Color
     {
@@ -160,31 +194,33 @@ void SpaceProcessor::parameterValueChanged (int id, float value)
 
 void SpaceProcessor::releaseResources()
 {
-    const ScopedLock sl (getCallbackLock());
-    reverb.reset();
+    //const ScopedLock sl (getCallbackLock());
+    //reverb.reset();
 }
 
 void SpaceProcessor::updateReverbParams()
 {
-    Reverb::Parameters localParams;
+//    Reverb::Parameters localParams;
 
-    localParams.roomSize = otherParam->get();
-    localParams.damping = 0.2f;//1.f - reverbColourParam->get();
-    localParams.wetLevel = wetDryParam->get();
-    localParams.dryLevel = 1.f - wetDryParam->get();
-    if (abs(reverbColourParam->get()) < 0.01f)
-    {
-        localParams.wetLevel = 0.f;
-        localParams.dryLevel = 1.f;
-    }
-    
-    
-    localParams.width = 1;
-    localParams.freezeMode = 0;
+//    localParams.roomSize = otherParam->get();
+//    localParams.damping = 0.2f;//1.f - reverbColourParam->get();
+//    localParams.wetLevel = wetDryParam->get();
+//    localParams.dryLevel = 1.f - wetDryParam->get();
+//    if (abs (reverbColourParam->get()) < 0.01f)
+//    {
+//        localParams.wetLevel = 0.f;
+//        localParams.dryLevel = 1.f;
+//    }
+//
+//    localParams.width = 1;
+//    localParams.freezeMode = 0;
 
     {
         const ScopedLock sl (getCallbackLock());
-        reverb.setParameters (localParams);
+        //reverb.setParameters (localParams);
+        float val = otherParam->get();
+        
+        reverb.setFeedbackGain (val);
     }
 }
 
