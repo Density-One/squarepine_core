@@ -482,12 +482,13 @@ class SEMFilter final : public InternalProcessor,
                         public AudioProcessorParameter::Listener
 {
 public:
+    // These values represent 100hz and 8000hz respectively
+    inline static const NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
+
     SEMFilter (int idNum = 1)
         : idNumber (idNum)
     {
         reset();
-        // These values represent 100hz and 8000hz respectively
-        NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
         auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM", "Frequency", freqRange, 0.0f,
                                                                          true,// isAutomatable
                                                                          "Cut-off",
