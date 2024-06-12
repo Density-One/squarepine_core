@@ -19,11 +19,11 @@ EchoProcessor::EchoProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", true, [] (bool value, int) -> String
                                                                 {
                                                                     if (value > 0)
                                                                         return TRANS ("On");
-                                                                    return TRANS ("Off");
+                                                                    return TRANS (" Off");
                                                                     ;
                                                                 });
 
