@@ -495,7 +495,7 @@ public:
                                                                          AudioProcessorParameter::genericParameter,
                                                                          [] (float value, int) -> String
                                                                          {
-                                                                             if (approximatelyEqual (value, 0.0f))
+                                                                             if (abs (value - 0.0f) < 0.0001f)
                                                                                  return "BYP";
 
                                                                              if (value < 0.0f)
