@@ -162,7 +162,6 @@ private:
     float s1[2] = { 0.0f };
     float s2[2] = { 0.0f };
 public:
-
     void updateCoefficients()
     {
         R = 1.f / (2.f * resSmooth.getNextValue());
@@ -598,13 +597,15 @@ public:
         }
         else
         {// Resonance change
+            value = jmax(value,0.01f);
+
             lpf.setQValue (value);
             hpf1.setQValue (value);
             hpf2.setQValue (value);
         }
     }
 
-    void parameterGestureChanged (int, bool) override {   }
+    void parameterGestureChanged (int, bool) override {}
 
     void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override { process (buffer); }
     //void processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer&) override  { process (buffer); }
@@ -667,11 +668,11 @@ public:
     // Allowable range from 0.01f to ~10
     void setQValue (float q)
     {
+        q = jmax(q,0.01f);
         resParam->setValueNotifyingHost (q);
         lpf.setQValue (q);
         hpf1.setQValue (q);
         hpf2.setQValue (q);
-
     }
     void setID (int idNum)
     {
