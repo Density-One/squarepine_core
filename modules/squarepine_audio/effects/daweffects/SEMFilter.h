@@ -30,7 +30,7 @@ public:
     {
         if (targetRes != q)
         {
-            targetRes = q;
+            targetRes = jlimit (0.01f, 10.f, q);
             resSmooth.setTargetValue (targetRes);
             updateCoefficients();
         }
@@ -117,7 +117,8 @@ public:
     {
         if (targetRes != q)
         {
-            targetRes = q;
+            targetRes = jlimit (0.01f, 10.f, q);
+
             resSmooth.setTargetValue (targetRes);
             updateCoefficients();
         }
@@ -600,8 +601,8 @@ public:
             value = jmax(value,0.01f);
 
             lpf.setQValue (value);
-            hpf1.setQValue (value);
-            hpf2.setQValue (value);
+            
+            hpf1.setQValue (jmap(value,0.01f,10.f,5.f,0.01f));
         }
     }
 
@@ -634,7 +635,6 @@ public:
 
                 mix = mixHPF.getNextValue();
                 hpv = (float) hpf1.processSample (y, c);
-                hpv = (float) hpf2.processSample (hpv, c);
                 y = (1.f - mix) * y + mix * hpv;
                 buffer.getWritePointer (c)[s] = y;
             }
@@ -668,11 +668,10 @@ public:
     // Allowable range from 0.01f to ~10
     void setQValue (float q)
     {
-        q = jmax(q,0.01f);
-        resParam->setValueNotifyingHost (q);
-        lpf.setQValue (q);
-        hpf1.setQValue (q);
-        hpf2.setQValue (q);
+//        resParam->setValueNotifyingHost (q);
+//        lpf.setQValue (q);
+//        hpf1.setQValue (q);
+//        hpf2.setQValue (q);
     }
     void setID (int idNum)
     {
