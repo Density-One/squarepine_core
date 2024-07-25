@@ -564,8 +564,7 @@ public:
     {
         const ScopedLock sl (getCallbackLock());
         lpf.prepareToPlay (Fs, bufferSize);
-        hpf1.prepareToPlay (Fs, bufferSize);
-        hpf2.prepareToPlay (Fs, bufferSize);
+        hpf.setFs (Fs);
         mixLPF.reset (Fs, 0.001f);
         mixHPF.reset (Fs, 0.001f);
         setRateAndBufferSizeDetails (Fs, bufferSize);
@@ -586,8 +585,7 @@ public:
         {
             // Frequency change
             lpf.setNormFreq (jmin (1.f, value + 1.f));
-            hpf1.setNormFreq (jmax (0.0001f, value));
-            hpf2.setNormFreq (jmax (0.0001f, value));
+            hpf.setNormFreq (jmax (0.0001f, value));
 
             // if cutoff is set to bypass mode, switch off both processing
             // TODO: use approximatelyEqual when it's finally fixed
@@ -613,7 +611,7 @@ public:
 
             lpf.setQValue (value);
 
-            hpf1.setQValue (jmap (value, 0.01f, 10.f, 5.f, 0.01f));
+            hpf.setQValue (jmap (value, 0.01f, 10.f, 5.f, 0.01f));
         }
     }
 
@@ -633,8 +631,7 @@ public:
             return;
 
         lpf.updateCoefficients();
-        hpf1.updateCoefficients();
-        hpf2.updateCoefficients();
+        hpf.updateCoefficients();
 
         const auto numChannels = buffer.getNumChannels();
         const auto numSamples = buffer.getNumSamples();
@@ -651,7 +648,7 @@ public:
                 y = (1.f - mix) * x + mix * lpf.processSample (x, c);
 
                 mix = mixHPF.getNextValue();
-                hpv = (float) hpf1.processSample (y, c);
+                hpv = (float) hpf.processSample (y, c);
                 y = (1.f - mix) * y + mix * hpv;
                 buffer.getWritePointer (c)[s] = y;
             }
@@ -662,8 +659,7 @@ public:
     {
         normFreqParam->setValueNotifyingHost (newNormFreq);
         lpf.setNormFreq (newNormFreq);
-        hpf1.setNormFreq (newNormFreq);
-        hpf2.setNormFreq (newNormFreq);
+        hpf.setNormFreq (newNormFreq);
 
         if (newNormFreq < 0.f)
         {
@@ -707,7 +703,7 @@ private:
     int idNumber = 1;
 
     SEMLowPassFilter lpf;
-    SEMHighPassFilter hpf1, hpf2;
+    DigitalFilter hpf;
 };
 
 ///-------------------------------------------------------
