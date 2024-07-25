@@ -1004,18 +1004,18 @@ class ButterSem final : public InternalProcessor,
                         public AudioProcessorParameter::Listener
 {
 public:
+    // These values represent 100hz and 8000hz respectively
+    inline static const NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
+
     ButterSem (int idNum = 1)
         : idNumber (idNum)
     {
         reset();
-        // These values represent 100hz and 8000hz respectively
-        NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
-
         // call back to convert a value to a display string in Hz
         auto stringFromValue = [] (float value, int) -> String
         {
             // TODO: use approximatelyEqual when it's finally fixed
-            if (abs (value) < 0.0001f)
+            if (abs (value - 0.0f) < 0.0001f)
                 return "BYP";
 
             if (value < 0.0f)
@@ -1229,6 +1229,9 @@ class DigitalSem final : public InternalProcessor,
                          public AudioProcessorParameter::Listener
 {
 public:
+    // These values represent 100hz and 8000hz respectively
+    inline static const NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
+
     DigitalSem (int idNum = 1)
         : idNumber (idNum)
     {
@@ -1236,14 +1239,11 @@ public:
 
         hpf.setFilterType (DigitalFilter::FilterType::HPF);
 
-        // These values represent 100hz and 8000hz respectively
-        NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
-
         // call back to convert a value to a display string in Hz
         auto stringFromValue = [] (float value, int) -> String
         {
             // TODO: use approximatelyEqual when it's finally fixed
-            if (abs (value) < 0.0001f)
+            if (abs (value - 0.0f) < 0.0001f)
                 return "BYP";
 
             if (value < 0.0f)
@@ -1452,5 +1452,232 @@ private:
     SEMLowPassFilter lpf;
     DigitalFilter hpf;
 };
+class DigitalSem2 final : public InternalProcessor,
+                          public AudioProcessorParameter::Listener
+{
+public:
+    // These values represent 100hz and 8000hz respectively
+    inline static const NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
 
+    DigitalSem2 (int idNum = 1)
+        : idNumber (idNum)
+    {
+        reset();
+
+        hpf.setFilterType (DigitalFilter::FilterType::HPF);
+        lpf.setFilterType (DigitalFilter::FilterType::LPF);
+
+        // call back to convert a value to a display string in Hz
+        auto stringFromValue = [] (float value, int) -> String
+        {
+            // TODO: use approximatelyEqual when it's finally fixed
+            if (abs (value - 0.0f) < 0.0001f)
+                return "BYP";
+
+            if (value < 0.0f)
+            {
+                // low-pass filter
+                float posFreq = value + 1.f;
+                float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
+                // For now, use int for min
+                if (static_cast<int> (freqHz) == 100)
+                    freqHz = 100;
+                return String (freqHz, 0);
+            }
+            else
+            {
+                // hi-pass filter
+                float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
+                // For now, use int for max
+                if (static_cast<int> (freqHz) == 8000)
+                    freqHz = 8000;
+                return String (freqHz, 0);
+            }
+        };
+
+        auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM",
+                                                                         "Frequency",
+                                                                         freqRange,
+                                                                         0.0f,
+                                                                         true,// isAutomatable
+                                                                         "Cut-off",
+                                                                         AudioProcessorParameter::genericParameter,
+                                                                         stringFromValue);
+
+        NormalisableRange<float> qRange = { 0.0f, 10.f };
+        auto res = std::make_unique<NotifiableAudioParameterFloat> ("resSEM", "resonance", qRange, 0.7071f,
+                                                                    true,// isAutomatable
+                                                                    "Q",
+                                                                    AudioProcessorParameter::genericParameter,
+                                                                    [] (float value, int) -> String
+                                                                    {
+                                                                        if (approximatelyEqual (value, 0.1f))
+                                                                            return "0.1";
+
+                                                                        if (approximatelyEqual (value, 10.f))
+                                                                            return "10";
+
+                                                                        return String (value, 1);
+                                                                    });
+
+        setPrimaryParameter (normFreqParam);
+        normFreqParam = normFreq.get();
+        normFreqParam->addListener (this);
+
+        resParam = res.get();
+        resParam->addListener (this);
+
+        auto layout = createDefaultParameterLayout (false);
+        layout.add (std::move (normFreq));
+        layout.add (std::move (res));
+        apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
+    }
+
+    ~DigitalSem2() override
+    {
+        normFreqParam->removeListener (this);
+        resParam->removeListener (this);
+    }
+
+    void prepareToPlay (double Fs, int bufferSize) override
+    {
+        const ScopedLock sl (getCallbackLock());
+        lpf.setFs (Fs);
+        hpf.setFs (Fs);
+        mixLPF.reset (Fs, 0.001f);
+        mixHPF.reset (Fs, 0.001f);
+        setRateAndBufferSizeDetails (Fs, bufferSize);
+    }
+
+    //==============================================================================
+    /** @internal */
+    const String getName() const override { return TRANS ("Digital Sem Two"); }
+    /** @internal */
+    Identifier getIdentifier() const override { return "Digital Sem Two" + String (idNumber); }
+    /** @internal */
+    bool supportsDoublePrecisionProcessing() const override { return false; }
+
+    void parameterValueChanged (int paramNum, float value) override
+    {
+        const ScopedLock sl (getCallbackLock());
+        if (paramNum == 1)
+        {
+            // Frequency change
+            lpf.setNormFreq (jmin (1.f, value + 1.f));
+            hpf.setNormFreq (jmax (0.0001f, value));
+
+            // if cutoff is set to bypass mode, switch off both processing
+            // TODO: use approximatelyEqual when it's finally fixed
+            if (abs (value) < 0.0001f)
+            {
+                mixLPF.setTargetValue (0.f);
+                mixHPF.setTargetValue (0.f);
+            }
+            else if (value < 0.f)
+            {
+                mixLPF.setTargetValue (1.f);
+                mixHPF.setTargetValue (0.f);
+            }
+            else if (value > 0.f)
+            {
+                mixLPF.setTargetValue (0.f);
+                mixHPF.setTargetValue (1.f);
+            }
+        }
+        else
+        {// Resonance change
+            lpf.setQValue (value);
+            hpf.setQValue (value);
+        }
+    }
+
+    void parameterGestureChanged (int, bool) override {}
+
+    void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override { process (buffer); }
+    //void processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer&) override  { process (buffer); }
+
+    void process (juce::AudioBuffer<float>& buffer)
+    {
+        // If the device is turned off, don't process
+        if (isBypassed())
+            return;
+
+        // If the current value is 0.0, also bypass
+        if (abs (normFreqParam->get()) < 0.0001f)
+            return;
+
+        lpf.updateCoefficients();
+        hpf.updateCoefficients();
+
+        const auto numChannels = buffer.getNumChannels();
+        const auto numSamples = buffer.getNumSamples();
+
+        const ScopedLock sl (getCallbackLock());
+
+        float x, y, mix, hpv;
+        for (int c = 0; c < numChannels; ++c)
+        {
+            for (int s = 0; s < numSamples; ++s)
+            {
+                mix = mixLPF.getNextValue();
+                x = buffer.getWritePointer (c)[s];
+                y = (1.f - mix) * x + mix * lpf.processSample (x, c);
+
+                mix = mixHPF.getNextValue();
+                hpv = (float) hpf.processSample (y, c);
+                y = (1.f - mix) * y + mix * hpv;
+                buffer.getWritePointer (c)[s] = y;
+            }
+        }
+    }
+
+    void setNormFreq (float newNormFreq)
+    {
+        normFreqParam->setValueNotifyingHost (newNormFreq);
+        lpf.setNormFreq (newNormFreq);
+        hpf.setNormFreq (newNormFreq);
+
+        if (newNormFreq < 0.f)
+        {
+            mixLPF.setTargetValue (1.f);
+            mixHPF.setTargetValue (0.f);
+        }
+        else if (newNormFreq > 0.f)
+        {
+            mixLPF.setTargetValue (0.f);
+            mixHPF.setTargetValue (1.f);
+        }
+        else
+        {
+            mixLPF.setTargetValue (0.f);
+            mixHPF.setTargetValue (0.f);
+        }
+    }
+
+    // Allowable range from 0.01f to ~10
+    void setQValue (float q)
+    {
+        resParam->setValueNotifyingHost (q);
+        lpf.setQValue (q);
+        hpf.setQValue (q);
+    }
+    void setID (int idNum)
+    {
+        idNumber = idNum;
+    }
+private:
+    //==============================================================================
+    AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    NotifiableAudioParameterFloat* normFreqParam = nullptr;
+    NotifiableAudioParameterFloat* resParam = nullptr;
+
+    SmoothedValue<float, ValueSmoothingTypes::Linear> mixLPF { 0.0f };
+    SmoothedValue<float, ValueSmoothingTypes::Linear> mixHPF { 0.0f };
+
+    int idNumber = 1;
+
+    DigitalFilter lpf;
+    DigitalFilter hpf;
+};
 }
