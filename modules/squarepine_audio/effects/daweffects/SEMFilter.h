@@ -541,6 +541,8 @@ public:
                                                                         return String (value, 1);
                                                                     });
 
+        hpf.setFilterType (DigitalFilter::FilterType::HPF);
+
         setPrimaryParameter (normFreqParam);
         normFreqParam = normFreq.get();
         normFreqParam->addListener (this);
@@ -585,8 +587,8 @@ public:
         {
             // Frequency change
             lpf.setNormFreq (jmin (1.f, value + 1.f));
-            hpf.setNormFreq (jmax (0.0001f, value));
-
+            auto hv = jmax (0.0001f, value);
+            hpf.setNormFreq (hv);
             // if cutoff is set to bypass mode, switch off both processing
             // TODO: use approximatelyEqual when it's finally fixed
             if (abs (value) < 0.0001f)
@@ -604,15 +606,26 @@ public:
                 mixLPF.setTargetValue (0.f);
                 mixHPF.setTargetValue (1.f);
             }
+            // This should be around 200 hz
+            if (value < 0.335f)
+            {
+                updateHighPassQ (hpQ, jmap (value, 0.001f, 0.335f, 0.001f, 1.f));
+            }
         }
         else
         {// Resonance change
             value = jmax (value, 0.01f);
-
             lpf.setQValue (value);
-
-            hpf.setQValue (jmap (value, 0.01f, 10.f, 5.f, 0.01f));
+            updateHighPassQ (value, hpCoeff);
         }
+    }
+
+    void updateHighPassQ (float value, float coefficient)
+    {
+        value = jlimit (0.01f, 10.f, value);
+        hpCoeff = jlimit (0.001f, 1.f, coefficient);
+        hpQ = jmap (value, 0.01f, 10.f, 0.01f, 10.0f);
+        hpf.setQValue (hpQ * hpCoeff);
     }
 
     void parameterGestureChanged (int, bool) override {}
@@ -704,6 +717,9 @@ private:
 
     SEMLowPassFilter lpf;
     DigitalFilter hpf;
+
+    float hpQ = 0.707f;
+    float hpCoeff = 1.0f;
 };
 
 ///-------------------------------------------------------
