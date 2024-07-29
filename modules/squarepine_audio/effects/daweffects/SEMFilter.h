@@ -624,7 +624,7 @@ public:
     {
         value = jlimit (0.01f, 10.f, value);
         hpCoeff = jlimit (0.001f, 1.f, coefficient);
-        hpQ = jmap (value, 0.01f, 10.f, 0.01f, 10.0f);
+        hpQ = value;
         hpf.setQValue (hpQ * hpCoeff);
     }
 
