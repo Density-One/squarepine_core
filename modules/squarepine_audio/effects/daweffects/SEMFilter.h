@@ -580,6 +580,22 @@ public:
     /** @internal */
     bool supportsDoublePrecisionProcessing() const override { return false; }
 
+    // Logarithmic mapping function
+    float logMap (float value, float inMin, float inMax, float outMin, float outMax)
+    {
+        float normalizedInput = (value - inMin) / (inMax - inMin);// Normalize input value
+        float logValue = std::log (normalizedInput + 1.0f);// Apply logarithmic mapping
+        float normalizedOutput = logValue / std::log (2.0f);// Normalize to [0, 1] range
+        return outMin + normalizedOutput * (outMax - outMin);// Scale to output range
+    }
+    // Exponential mapping function
+    float expMap (float value, float inMin, float inMax, float outMin, float outMax)
+    {
+        float normalizedInput = (value - inMin) / (inMax - inMin);// Normalize input value
+        float expValue = std::exp (normalizedInput);// Apply exponential mapping
+        float normalizedOutput = (expValue - 1.0f) / (std::exp (1.0f) - 1.0f);// Normalize to [0, 1] range
+        return outMin + normalizedOutput * (outMax - outMin);// Scale to output range
+    }
     void parameterValueChanged (int paramNum, float value) override
     {
         const ScopedLock sl (getCallbackLock());
@@ -609,12 +625,16 @@ public:
             // This should be around 200 hz
             if (value < 0.335f)
             {
-                updateHighPassQ (hpQ, jmap (value, 0.001f, 0.335f, 0.001f, 1.f));
+                updateHighPassQ (hpQ, expMap (value, 0.01f, 0.7f, 0.075f, 0.9f));
+            }
+            else
+            {
+                updateHighPassQ (hpQ, 1.0);
             }
         }
         else
         {// Resonance change
-            value = jmax (value, 0.01f);
+            value = jmax (value, 0.015f);
             lpf.setQValue (value);
             updateHighPassQ (value, hpCoeff);
         }
@@ -622,7 +642,7 @@ public:
 
     void updateHighPassQ (float value, float coefficient)
     {
-        value = jlimit (0.01f, 10.f, value);
+        value = jlimit (0.01f, 9.f, value);
         hpCoeff = jlimit (0.001f, 1.f, coefficient);
         hpQ = value;
         hpf.setQValue (hpQ * hpCoeff);
