@@ -3,11 +3,25 @@ inline Component* realGetComponent (Component& p, Point<int> screenPos)
     if (p.getScreenBounds().contains (screenPos))
     {
         for (auto* c: p.getChildren())
+        {
             if (auto* r = realGetComponent (*c, screenPos))
             {
-                if (r->getName() != "overlay")
+                const auto name = getDemangledName (r);
+
+                bool isAllowed = true;
+                for (const auto& blockedName : { "LoginOverlay" })
+                {
+                    if (name == blockedName)
+                    {
+                        isAllowed = false;
+                        break;
+                    }
+                }
+                
+                if (isAllowed)
                     return r;
             }
+        }
         return &p;
     }
 
@@ -115,7 +129,7 @@ class ComponentViewer::ContentComponent final : public Component,
 public:
     ContentComponent()
     {
-        const auto f = Font (Font::getDefaultMonospacedFontName(), 20.0f, Font::plain);
+        const auto f = Font (Font::getDefaultMonospacedFontName(), 14.0f, Font::plain);
 
         details.setFont (f);
         details.setMultiLine (true, false);
