@@ -542,6 +542,7 @@ public:
                                                                     });
 
         hpf.setFilterType (DigitalFilter::FilterType::HPF);
+        lpf.setFilterType (DigitalFilter::FilterType::LPF);
 
         setPrimaryParameter (normFreqParam);
         normFreqParam = normFreq.get();
@@ -565,7 +566,8 @@ public:
     void prepareToPlay (double Fs, int bufferSize) override
     {
         const ScopedLock sl (getCallbackLock());
-        lpf.prepareToPlay (Fs, bufferSize);
+        // lpf.prepareToPlay (Fs, bufferSize);
+        lpf.setFs (Fs);
         hpf.setFs (Fs);
         mixLPF.reset (Fs, 0.001f);
         mixHPF.reset (Fs, 0.001f);
@@ -735,7 +737,7 @@ private:
 
     int idNumber = 1;
 
-    SEMLowPassFilter lpf;
+    DigitalFilter lpf;
     DigitalFilter hpf;
 
     float hpQ = 0.707f;
