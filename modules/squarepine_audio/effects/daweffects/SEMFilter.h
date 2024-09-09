@@ -625,13 +625,18 @@ public:
                 mixHPF.setTargetValue (1.f);
             }
             // This should be around 200 hz
-            if (value < 0.335f)
+            if (value > 0 && value < 0.335f)
             {
                 updateHighPassQ (hpQ, expMap (value, 0.01f, 0.7f, 0.075f, 0.9f));
+            }
+            else if (value < -0.701f)
+            {
+                updateLowPassQ (lpQ, expMap (0.9f - abs (value), 0.01f, 0.7f, 0.075f, 0.9f));
             }
             else
             {
                 updateHighPassQ (hpQ, 1.0);
+                updateLowPassQ (lpQ, 1.0);
             }
         }
         else
@@ -639,6 +644,7 @@ public:
             value = jmax (value, 0.015f);
             lpf.setQValue (value);
             updateHighPassQ (value, hpCoeff);
+            updateLowPassQ (value, lpCoeff);
         }
     }
 
@@ -649,7 +655,13 @@ public:
         hpQ = value;
         hpf.setQValue (hpQ * hpCoeff);
     }
-
+    void updateLowPassQ (float value, float coefficient)
+    {
+        value = jlimit (0.01f, 9.f, value);
+        lpCoeff = jlimit (0.001f, 1.f, coefficient);
+        lpQ = value;
+        lpf.setQValue (lpQ * lpCoeff);
+    }
     void parameterGestureChanged (int, bool) override {}
 
     void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override { process (buffer); }
@@ -742,6 +754,8 @@ private:
 
     float hpQ = 0.707f;
     float hpCoeff = 1.0f;
+    float lpQ = 0.707f;
+    float lpCoeff = 1.0f;
 };
 
 ///-------------------------------------------------------
