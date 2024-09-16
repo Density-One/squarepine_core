@@ -600,7 +600,8 @@ public:
     }
     void parameterValueChanged (int paramNum, float value) override
     {
-        const ScopedLock sl (getCallbackLock());
+        // For testing, remove lock
+        // const ScopedLock sl (getCallbackLock());
         if (paramNum == 1)
         {
             // Frequency change
