@@ -302,33 +302,13 @@ private:
     float a1 = 0.0f;
     float a2 = 0.0f;
 
-    // Temporary variables used in calculations
-    float A = 0.0f;
-    float f_PI = static_cast<float> (M_PI);
-    float w0 = 0.0f;
-    float alpha = 0.0f;
-    float cw0 = 0.0f;
-    float B0 = 0.0f;
-    float B1 = 0.0f;
-    float B2 = 0.0f;
-    float A1 = 0.0f;
-    float A2 = 0.0f;
-    float sw0 = 0.0f;
-    float sqA = 0.0f;
-
-    // Temporary variables to ensure updateCoeff isn't over used
-    float lastAmp = 0.0;
-    float lastFreqSmooth = 0.0f;
-    float lastFS = 0.0f;
-    float lastQSmooth = 0.0f;
-
     int smoothingCount = 0;
     const int SAMPLESFORSMOOTHING = 256;
     void performSmoothing()
     {
-        float _alpha = 0.9999f;
-        freqSmooth = _alpha * freqSmooth + (1.f - _alpha) * freqTarget;
-        qSmooth = _alpha * qSmooth + (1.f - _alpha) * qTarget;
+        float alpha = 0.9999f;
+        freqSmooth = alpha * freqSmooth + (1.f - alpha) * freqTarget;
+        qSmooth = alpha * qSmooth + (1.f - alpha) * qTarget;
 
         smoothingCount++;
         if (smoothingCount >= SAMPLESFORSMOOTHING)
@@ -337,88 +317,79 @@ private:
             smoothingCount = 0;
         }
     }
-
-    bool requiresUpdate()
-    {
-        return lastAmp != ampdB || lastFreqSmooth != freqSmooth || lastFS != Fs || lastQSmooth != qSmooth;
-    }
 public:
     void updateCoefficients()
     {
-        if (! requiresUpdate())
-            return;
+        float A = std::pow (10.0f, ampdB / 40.0f);// Linear amplitude
 
-        A = std::pow (10.0f, ampdB / 40.0f);// Linear amplitude
-        w0 = (2.0f * f_PI) * freqSmooth / Fs;
+        // Normalize frequency
+        float f_PI = static_cast<float> (M_PI);
+        float w0 = (2.0f * f_PI) * freqSmooth / Fs;
+
         // Bandwidth/slope/resonance parameter
-        alpha = std::sin (w0) / (2.0f * qSmooth);
-        cw0 = std::cos (w0);
+        float alpha = std::sin (w0) / (2.0f * qSmooth);
 
-        lastAmp = ampdB;
-        lastFreqSmooth = freqSmooth;
-        lastFS = Fs;
-        lastQSmooth = qSmooth;
-
+        float cw0 = std::cos (w0);
         switch (filterType)
         {
             case LPF:
             {
                 a0 = 1.0f + alpha;
-                B0 = (1.0f - cw0) / 2.0f;
+                float B0 = (1.0f - cw0) / 2.0f;
                 b0 = B0 / a0;
-                B1 = 1.0f - cw0;
+                float B1 = 1.0f - cw0;
                 b1 = B1 / a0;
-                B2 = (1.0f - cw0) / 2.0f;
+                float B2 = (1.0f - cw0) / 2.0f;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case HPF:
             {
                 a0 = 1.0f + alpha;
-                B0 = (1.0f + cw0) / 2.0f;
+                float B0 = (1.0f + cw0) / 2.0f;
                 b0 = B0 / a0;
-                B1 = -(1.0f + cw0);
+                float B1 = -(1.0f + cw0);
                 b1 = B1 / a0;
-                B2 = (1.0f + cw0) / 2.0f;
+                float B2 = (1.0f + cw0) / 2.0f;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case BPF1:
             {
-                sw0 = std::sin (w0);
+                float sw0 = std::sin (w0);
                 a0 = 1.0f + alpha;
-                B0 = sw0 / 2.0f;
+                float B0 = sw0 / 2.0f;
                 b0 = B0 / a0;
-                B1 = 0.0f;
+                float B1 = 0.0f;
                 b1 = B1 / a0;
-                B2 = -sw0 / 2.0f;
+                float B2 = -sw0 / 2.0f;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case BPF2:
             {
                 a0 = 1.0f + alpha;
-                B0 = alpha;
+                float B0 = alpha;
                 b0 = B0 / a0;
-                B1 = 0.0f;
+                float B1 = 0.0f;
                 b1 = B1 / a0;
-                B2 = -alpha;
+                float B2 = -alpha;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
 
                 break;
@@ -426,31 +397,31 @@ public:
             case NOTCH:
             {
                 a0 = 1.0f + alpha;
-                B0 = 1.0f;
+                float B0 = 1.0f;
                 b0 = B0 / a0;
-                B1 = -2.0f * cw0;
+                float B1 = -2.0f * cw0;
                 b1 = B1 / a0;
-                B2 = 1.0f;
+                float B2 = 1.0f;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case LSHELF:
             {
-                sqA = std::sqrt (A);
+                float sqA = std::sqrt (A);
                 a0 = (A + 1.0f) + (A - 1.0f) * cw0 + 2.0f * sqA * alpha;
-                B0 = A * ((A + 1.0f) - (A - 1.0f) * cw0 + 2.0f * sqA * alpha);
+                float B0 = A * ((A + 1.0f) - (A - 1.0f) * cw0 + 2.0f * sqA * alpha);
                 b0 = B0 / a0;
-                B1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cw0);
+                float B1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cw0);
                 b1 = B1 / a0;
-                B2 = A * ((A + 1.0f) - (A - 1.0f) * cw0 - 2.0f * sqA * alpha);
+                float B2 = A * ((A + 1.0f) - (A - 1.0f) * cw0 - 2.0f * sqA * alpha);
                 b2 = B2 / a0;
-                A1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cw0);
+                float A1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cw0);
                 a1 = A1 / a0;
-                A2 = (A + 1.0f) + (A - 1.0f) * cw0 - 2.0f * sqA * alpha;
+                float A2 = (A + 1.0f) + (A - 1.0f) * cw0 - 2.0f * sqA * alpha;
                 a2 = A2 / a0;
 
                 break;
@@ -458,17 +429,17 @@ public:
 
             case HSHELF:
             {
-                sqA = std::sqrt (A);
+                float sqA = std::sqrt (A);
                 a0 = (A + 1.0f) - (A - 1.0f) * cw0 + 2.0f * sqA * alpha;
-                B0 = A * ((A + 1.0f) + (A - 1.0f) * cw0 + 2.0f * sqA * alpha);
+                float B0 = A * ((A + 1.0f) + (A - 1.0f) * cw0 + 2.0f * sqA * alpha);
                 b0 = B0 / a0;
-                B1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cw0);
+                float B1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cw0);
                 b1 = B1 / a0;
-                B2 = A * ((A + 1.0f) + (A - 1.0f) * cw0 - 2.0f * sqA * alpha);
+                float B2 = A * ((A + 1.0f) + (A - 1.0f) * cw0 - 2.0f * sqA * alpha);
                 b2 = B2 / a0;
-                A1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cw0);
+                float A1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cw0);
                 a1 = A1 / a0;
-                A2 = (A + 1.0f) - (A - 1.0f) * cw0 - 2.0f * sqA * alpha;
+                float A2 = (A + 1.0f) - (A - 1.0f) * cw0 - 2.0f * sqA * alpha;
                 a2 = A2 / a0;
 
                 break;
@@ -478,15 +449,15 @@ public:
 
             {
                 a0 = 1.0f + alpha / A;
-                B0 = 1.0f + alpha * A;
+                float B0 = 1.0f + alpha * A;
                 b0 = B0 / a0;
-                B1 = -2.0f * cw0;
+                float B1 = -2.0f * cw0;
                 b1 = B1 / a0;
-                B2 = 1.0f - alpha * A;
+                float B2 = 1.0f - alpha * A;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha / A;
+                float A2 = 1.0f - alpha / A;
                 a2 = A2 / a0;
 
                 break;
@@ -495,15 +466,15 @@ public:
             case APF:
             {
                 a0 = 1.0f + alpha;
-                B0 = 1.0f - alpha;
+                float B0 = 1.0f - alpha;
                 b0 = B0 / a0;
-                B1 = -2.0f * cw0;
+                float B1 = -2.0f * cw0;
                 b1 = B1 / a0;
-                B2 = 1.0f + alpha;
+                float B2 = 1.0f + alpha;
                 b2 = B2 / a0;
-                A1 = -2.0f * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                A2 = 1.0f - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
 
                 break;
