@@ -543,6 +543,11 @@ public:
 
         hpf.setFilterType (DigitalFilter::FilterType::HPF);
         lpf.setFilterType (DigitalFilter::FilterType::LPF);
+        lpf.setFreq (20000);
+        hpf.setFreq (100);
+
+        updateHighPassQ (hpQ, hpQReduction);
+        updateLowPassQ (lpQ, lpQReduction);
 
         setPrimaryParameter (normFreqParam);
         normFreqParam = normFreq.get();
@@ -605,7 +610,8 @@ public:
         if (paramNum == 1)
         {
             // Frequency change
-            lpf.setNormFreq (jmin (1.f, value + 1.f));
+            auto lpFreq = jmin (1.f, value + 1.f);
+            lpf.setNormFreq (lpFreq);
             auto hv = jmax (0.0001f, value);
             hpf.setNormFreq (hv);
             // if cutoff is set to bypass mode, switch off both processing
@@ -626,42 +632,49 @@ public:
                 mixHPF.setTargetValue (1.f);
             }
             // This should be around 200 hz
-            if (value > 0 && value < 0.335f)
+            if (value > 0 && value < 0.30f)
             {
-                updateHighPassQ (hpQ, expMap (value, 0.01f, 0.7f, 0.075f, 0.9f));
+                // coeff should be 1 when at the lowest value
+                updateHighPassQ (hpQ, 1.0f - abs (value / 0.30f));
             }
             else if (value < -0.701f)
             {
-                updateLowPassQ (lpQ, expMap (0.9f - abs (value), 0.01f, 0.7f, 0.075f, 0.9f));
+                // maximum value we can get to here is -0.767
+                //
+                const float range = -0.767f + 0.701f;
+                // coeff should be 1 when at the lowest value
+                updateLowPassQ (lpQ, (abs ((abs (value) - 0.701f) / range)));
             }
             else
             {
-                updateHighPassQ (hpQ, 1.0);
-                updateLowPassQ (lpQ, 1.0);
+                updateHighPassQ (hpQ, 0);
+                updateLowPassQ (lpQ, 0);
             }
         }
         else
         {// Resonance change
             value = jmax (value, 0.015f);
             lpf.setQValue (value);
-            updateHighPassQ (value, hpCoeff);
-            updateLowPassQ (value, lpCoeff);
+            hpf.setQValue (value);
+
+            updateHighPassQ (value, hpQReduction);
+            updateLowPassQ (value, lpQReduction);
         }
     }
-
-    void updateHighPassQ (float value, float coefficient)
+    // When coeff is high apply maximum resonance reduction
+    void updateHighPassQ (float value, float qReductionNormalized)
     {
         value = jlimit (0.01f, 9.f, value);
-        hpCoeff = jlimit (0.001f, 1.f, coefficient);
+        hpQReduction = jlimit (0.0f, 1.f, qReductionNormalized);
         hpQ = value;
-        hpf.setQValue (hpQ * hpCoeff);
+        hpf.setQValue (jlimit (0.01f, 8.7f, hpQ - (hpQReduction * hpQ)) + 0.3f);
     }
-    void updateLowPassQ (float value, float coefficient)
+    void updateLowPassQ (float value, float qReductionNormalized)
     {
         value = jlimit (0.01f, 9.f, value);
-        lpCoeff = jlimit (0.001f, 1.f, coefficient);
+        lpQReduction = jlimit (0.0f, 1.f, qReductionNormalized);
         lpQ = value;
-        lpf.setQValue (lpQ * lpCoeff);
+        lpf.setQValue (jlimit (0.01f, 8.7f, lpQ - (lpQReduction * lpQ)) + 0.3f);
     }
     void parameterGestureChanged (int, bool) override {}
 
@@ -674,9 +687,7 @@ public:
         if (isBypassed())
             return;
 
-        // If the current value is 0.0, also bypass
-        if (abs (normFreqParam->get()) < 0.0001f)
-            return;
+        bool softBypass = abs (normFreqParam->get()) < 0.0001f;
 
         lpf.updateCoefficients();
         hpf.updateCoefficients();
@@ -698,7 +709,8 @@ public:
                 mix = mixHPF.getNextValue();
                 hpv = (float) hpf.processSample (y, c);
                 y = (1.f - mix) * y + mix * hpv;
-                buffer.getWritePointer (c)[s] = y;
+                if (! softBypass)
+                    buffer.getWritePointer (c)[s] = y;
             }
         }
     }
@@ -754,9 +766,9 @@ private:
     DigitalFilter hpf;
 
     float hpQ = 0.707f;
-    float hpCoeff = 1.0f;
+    float hpQReduction = 0.0f;
     float lpQ = 0.707f;
-    float lpCoeff = 1.0f;
+    float lpQReduction = 0.0f;
 };
 
 ///-------------------------------------------------------
