@@ -248,7 +248,7 @@ public:
     void setNormFreq (float normFreq)
     {
         float newFreq = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
-        freqTarget = jlimit (20.0f, 20000.0f, newFreq);
+        freqTarget = jlimit (20.0f, 22000.0f, newFreq);
         freqTarget = jmin (freqTarget, (Fs / 2.f) * 0.95f);
         updateCoefficients();
     }
@@ -260,7 +260,7 @@ public:
 
     void setFreq (float newFreq)
     {
-        freqTarget = jlimit (20.0f, 20000.0f, newFreq);
+        freqTarget = jlimit (20.0f, 22000.0f, newFreq);
         freqTarget = jmin (freqTarget, (Fs / 2.f) * 0.95f);
         updateCoefficients();
     }
@@ -490,8 +490,7 @@ class SEMFilter final : public InternalProcessor,
                         public AudioProcessorParameter::Listener
 {
 public:
-    // These values represent 100hz and 8000hz respectively
-    inline static const NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
+    inline static const NormalisableRange<float> freqRange = { -1.0f, 1.0f };
 
     SEMFilter (int idNum = 1)
         : idNumber (idNum)
@@ -501,7 +500,7 @@ public:
                                                                          true,// isAutomatable
                                                                          "Cut-off",
                                                                          AudioProcessorParameter::genericParameter,
-                                                                         [] (float value, int) -> String
+                                                                         [this] (float value, int) -> String
                                                                          {
                                                                              if (abs (value - 0.0f) < 0.0001f)
                                                                                  return "BYP";
@@ -509,7 +508,7 @@ public:
                                                                              if (value < 0.0f)
                                                                              {
                                                                                  float posFreq = value + 1.f;
-                                                                                 float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
+                                                                                 float freqHz = frequencyFromNormRange (mapNormRangeToInternalLPFRange (posFreq));
                                                                                  // For now, use int for min
                                                                                  if (static_cast<int> (freqHz) == 100)
                                                                                      freqHz = 100;
@@ -517,7 +516,7 @@ public:
                                                                              }
                                                                              else
                                                                              {
-                                                                                 float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
+                                                                                 float freqHz = frequencyFromNormRange (mapNormRangeToInternalHPFRange (value));
                                                                                  // For now, use int for max
                                                                                  if (static_cast<int> (freqHz) == 8000)
                                                                                      freqHz = 8000;
@@ -586,7 +585,29 @@ public:
     Identifier getIdentifier() const override { return "SEM Filter" + String (idNumber); }
     /** @internal */
     bool supportsDoublePrecisionProcessing() const override { return false; }
+    /** */
+    float frequencyFromNormRange (const float& value)
+    {
+        return 2.f * std::powf (10.f, 3.f * value + 1.f);
+    }
 
+    float getNormValueFromFrequency (const float& frequency)
+    {
+        return (std::log10 (frequency / 2.f) - 1.f) / 3.f;
+    }
+
+    float mapNormRangeToInternalLPFRange (const float& normFrequency)
+    {
+        static float lpMinNorm = getNormValueFromFrequency (lpMinFreq);
+        static float lpMaxNorm = getNormValueFromFrequency (lpMaxFreq);
+        return jmap (normFrequency, lpMinNorm, lpMaxNorm);
+    }
+    float mapNormRangeToInternalHPFRange (const float& normFrequency)
+    {
+        static float hpMinNorm = getNormValueFromFrequency (hpMinFreq);
+        static float hpMaxNorm = getNormValueFromFrequency (hpMaxFreq);
+        return jmap (normFrequency, hpMinNorm, hpMaxNorm);
+    }
     // Logarithmic mapping function
     float logMap (float value, float inMin, float inMax, float outMin, float outMax)
     {
@@ -610,13 +631,15 @@ public:
         if (paramNum == 1)
         {
             // Frequency change
-            auto lpFreq = jmin (1.f, value + 1.f);
-            lpf.setNormFreq (lpFreq);
-            auto hv = jmax (0.0001f, value);
-            hpf.setNormFreq (hv);
+            auto lpFreqFull = jmin (1.f, value + 1.f);
+            auto internalLPFreq = frequencyFromNormRange (mapNormRangeToInternalLPFRange (lpFreqFull));
+            lpf.setNormFreq (mapNormRangeToInternalLPFRange (lpFreqFull));
+            auto hpFreqFull = jmax (0.f, value);
+            auto internalHPFFreq = frequencyFromNormRange (mapNormRangeToInternalLPFRange (hpFreqFull));
+            hpf.setNormFreq (mapNormRangeToInternalHPFRange (hpFreqFull));
             // if cutoff is set to bypass mode, switch off both processing
             // TODO: use approximatelyEqual when it's finally fixed
-            if (abs (value) < 0.0001f)
+            if (abs (value) < 0.001f)
             {
                 mixLPF.setTargetValue (0.f);
                 mixHPF.setTargetValue (0.f);
@@ -631,19 +654,17 @@ public:
                 mixLPF.setTargetValue (0.f);
                 mixHPF.setTargetValue (1.f);
             }
+            // Here we rollof the resonance for the filters if their corresponding frequencies are below 200hz
             // This should be around 200 hz
-            if (value > 0 && value < 0.30f)
+            if (value > 0 && internalHPFFreq < 200)
             {
                 // coeff should be 1 when at the lowest value
-                updateHighPassQ (hpQ, 1.0f - abs (value / 0.30f));
+                updateHighPassQ (hpQ, 200.0f / (internalHPFFreq + hpMinFreq));
             }
-            else if (value < -0.701f)
+            else if (value < 0 && internalLPFreq < 200)
             {
-                // maximum value we can get to here is -0.767
-                //
-                const float range = -0.767f + 0.701f;
                 // coeff should be 1 when at the lowest value
-                updateLowPassQ (lpQ, (abs ((abs (value) - 0.701f) / range)));
+                updateLowPassQ (lpQ, 200.0f / (internalLPFreq + lpMinFreq));
             }
             else
             {
@@ -717,37 +738,6 @@ public:
         }
     }
 
-    void setNormFreq (float newNormFreq)
-    {
-        normFreqParam->setValueNotifyingHost (newNormFreq);
-        lpf.setNormFreq (newNormFreq);
-        hpf.setNormFreq (newNormFreq);
-
-        if (newNormFreq < 0.f)
-        {
-            mixLPF.setTargetValue (1.f);
-            mixHPF.setTargetValue (0.f);
-        }
-        else if (newNormFreq > 0.f)
-        {
-            mixLPF.setTargetValue (0.f);
-            mixHPF.setTargetValue (1.f);
-        }
-        else
-        {
-            mixLPF.setTargetValue (0.f);
-            mixHPF.setTargetValue (0.f);
-        }
-    }
-
-    // Allowable range from 0.01f to ~10
-    void setQValue (float)
-    {
-        //        resParam->setValueNotifyingHost (q);
-        //        lpf.setQValue (q);
-        //        hpf1.setQValue (q);
-        //        hpf2.setQValue (q);
-    }
     void setID (int idNum)
     {
         idNumber = idNum;
@@ -771,6 +761,11 @@ private:
     float hpQReduction = 0.0f;
     float lpQ = 0.707f;
     float lpQReduction = 0.0f;
+
+    const float lpMinFreq = 100.f;
+    const float lpMaxFreq = 16000.f;
+    const float hpMinFreq = 100.f;
+    const float hpMaxFreq = 8000.f;
 };
 
 ///-------------------------------------------------------
