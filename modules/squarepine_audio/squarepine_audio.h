@@ -164,6 +164,16 @@ String getInternalProcessorTypeName();
 #include "wrappers/AudioSourceProcessor.h"
 #include "wrappers/AudioTransportProcessor.h"
 //==============================================================================
+#include "effects/daweffects/reverb-sinevibes/DampingFilter.h"
+#include "effects/daweffects/reverb-sinevibes/InlineMath.h"
+#include "effects/daweffects/reverb-sinevibes/LowCutFilter.h"
+#include "effects/daweffects/reverb-sinevibes/SimpleDelay.h"
+#include "effects/daweffects/reverb-sinevibes/SimpleLFO.h"
+#include "effects/daweffects/reverb-sinevibes/SinCosTable.h"
+#include "effects/daweffects/reverb-sinevibes/MatrixReverb8x8.h"
+#include "effects/daweffects/reverb-sinevibes/MatrixReverb4x4.h"
+//==============================================================================
+
 #include "effects/daweffects/NotifiableAudioParameterFloat.h"
 #include "effects/daweffects/NotifiableAudioParameterBool.h"
 #include "effects/daweffects/SwitchableTimeParameter.h"

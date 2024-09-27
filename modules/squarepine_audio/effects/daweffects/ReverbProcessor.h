@@ -31,9 +31,24 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
-    //Using the Juce reverb
-    Reverb reverb;
-    void updateReverbParams();
+
+    NotifiableAudioParameterFloat* decayParam = nullptr;
+    NotifiableAudioParameterFloat* sizeParam = nullptr;
+    NotifiableAudioParameterFloat* preDelayParam = nullptr;
+    NotifiableAudioParameterFloat* modFrequencyParam = nullptr;
+    NotifiableAudioParameterFloat* modDepthParam = nullptr;
+    NotifiableAudioParameterFloat* lowDampParam = nullptr;
+    NotifiableAudioParameterFloat* highDampParam = nullptr;
+
+    MatrixReverb8x8 matrixReverb;
+    AudioBuffer<float> reverbInputBuffer;
+    AudioBuffer<float> reverbOutputBuffer;
+
+    std::vector<float> preDelayVector, sizeVector, decayVector, modFrequencyVector, modDepthVector, lowDampVector, highDampVector;
+
+
+    void updateReverbParams (int numSamples);
+    int maxBlockSize = 16384 * 4;
 
     int idNumber = 1;
     DigitalFilter hpf;

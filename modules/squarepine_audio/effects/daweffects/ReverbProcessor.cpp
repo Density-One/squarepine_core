@@ -48,6 +48,78 @@ ReverbProcessor::ReverbProcessor (int idNum)
                                                                      return txt << "%";
                                                                  });
 
+    NormalisableRange<float> decayRange = { 0, 1.0f };
+    auto decay = std::make_unique<NotifiableAudioParameterFloat> ("decay", "Decay", decayRange, 0.25f,
+                                                                  true,// isAutomatable
+                                                                  "Decay ",
+                                                                  AudioProcessorParameter::genericParameter,
+                                                                  [] (float value, int) -> String
+                                                                  {
+                                                                      int percentage = roundToInt (value * 100);
+                                                                      String txt (percentage);
+                                                                      return txt << "%";
+                                                                  });
+
+    NormalisableRange<float> sizeRange = { 0, 1.0f };
+    auto size = std::make_unique<NotifiableAudioParameterFloat> ("size", "Size", sizeRange, 0.75f,
+                                                                 true,// isAutomatable
+                                                                 "Size ",
+                                                                 AudioProcessorParameter::genericParameter,
+                                                                 [] (float value, int) -> String
+                                                                 {
+                                                                     int percentage = roundToInt (value * 100);
+                                                                     String txt (percentage);
+                                                                     return txt << "%";
+                                                                 });
+    NormalisableRange<float> preDelayRange = { 0, 1.0f };
+    auto predelay = std::make_unique<NotifiableAudioParameterFloat> ("preDelay", "PreDelay", preDelayRange, 0.05f,
+                                                                     true,// isAutomatable
+                                                                     "PreDelay ",
+                                                                     AudioProcessorParameter::genericParameter,
+                                                                     [] (float value, int) -> String
+                                                                     {
+                                                                         return String (value) + " seconds";
+                                                                     });
+
+    NormalisableRange<float> modFreqRange = { 0.05f, 5.0f };
+    auto modFreq = std::make_unique<NotifiableAudioParameterFloat> ("modFreq", "ModFreq", modFreqRange, 0.05f,
+                                                                    true,// isAutomatable
+                                                                    "ModFreq ",
+                                                                    AudioProcessorParameter::genericParameter,
+                                                                    [] (float value, int) -> String
+                                                                    {
+                                                                        return String (value) + " hz";
+                                                                    });
+
+    NormalisableRange<float> modDepthRange = { 0.f, 1.0f };
+    auto modDepth = std::make_unique<NotifiableAudioParameterFloat> ("modDepth", "ModDepth", modDepthRange, 0.0f,
+                                                                     true,// isAutomatable
+                                                                     "ModFreq ",
+                                                                     AudioProcessorParameter::genericParameter,
+                                                                     [] (float value, int) -> String
+                                                                     {
+                                                                         return String (value * 100) + "%";
+                                                                     });
+
+    NormalisableRange<float> lowDampRange = { 20.f, 20000.0f };
+    auto lowDamp = std::make_unique<NotifiableAudioParameterFloat> ("lowDamp", "LowDamping", lowDampRange, 10000.0f,
+                                                                    true,// isAutomatable
+                                                                    "LowDamping ",
+                                                                    AudioProcessorParameter::genericParameter,
+                                                                    [] (float value, int) -> String
+                                                                    {
+                                                                        return String (value) + "hz";
+                                                                    });
+    NormalisableRange<float> highDampRange = { 20.f, 2000.0f };
+    auto highDamp = std::make_unique<NotifiableAudioParameterFloat> ("highDamp", "HighDamping", highDampRange, 100.0f,
+                                                                     true,// isAutomatable
+                                                                     "HighDamping ",
+                                                                     AudioProcessorParameter::genericParameter,
+                                                                     [] (float value, int) -> String
+                                                                     {
+                                                                         return String (value) + "hz";
+                                                                     });
+
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
@@ -60,11 +132,40 @@ ReverbProcessor::ReverbProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
+    decayParam = decay.get();
+    decayParam->addListener (this);
+
+    sizeParam = size.get();
+    sizeParam->addListener (this);
+
+    preDelayParam = predelay.get();
+    preDelayParam->addListener (this);
+
+    modFrequencyParam = modFreq.get();
+    modFrequencyParam->addListener (this);
+
+    modDepthParam = modDepth.get();
+    modDepthParam->addListener (this);
+
+    lowDampParam = lowDamp.get();
+    lowDampParam->addListener (this);
+
+    highDampParam = highDamp.get();
+    highDampParam->addListener (this);
+
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
     layout.add (std::move (filterAmount));
+    layout.add (std::move (decay));
+    layout.add (std::move (size));
+    layout.add (std::move (predelay));
+    layout.add (std::move (modFreq));
+    layout.add (std::move (modDepth));
+    layout.add (std::move (lowDamp));
+    layout.add (std::move (highDamp));
+
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
@@ -74,9 +175,9 @@ ReverbProcessor::ReverbProcessor (int idNum)
     hpf.setFreq (200.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
-    
-    setEffectiveInTimeDomain (true);
 
+    setEffectiveInTimeDomain (true);
+    //   setIsInSteppedTimeMode (true);
 }
 
 ReverbProcessor::~ReverbProcessor()
@@ -92,13 +193,17 @@ void ReverbProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     setRateAndBufferSizeDetails (Fs, bufferSize);
     BandProcessor::prepareToPlay (Fs, bufferSize);
-    reverb.reset();
-    reverb.setSampleRate (Fs);
+
+    //matrixReverb.setMaxBlockSize (maxBlockSize);
+    updateReverbParams (bufferSize);
+    matrixReverb.setSampleRate (static_cast<float> (Fs));
     hpf.setFs (Fs);
     lpf.setFs (Fs);
 }
 void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
+    ignoreUnused (midi);
+
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
@@ -114,33 +219,24 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
 
     if (bypass || isBypassed())
         return;
-    
-    updateReverbParams();
+
+    updateReverbParams (numSamples);
+
+    reverbInputBuffer.setSize (numChannels, numSamples);
+    reverbOutputBuffer.setSize (numChannels, numSamples);
 
     fillMultibandBuffer (buffer);
+
+    reverbInputBuffer.makeCopyOf (multibandBuffer);
+
     auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
-    switch (numChannels)
-    {
-        case 1:
-            reverb.processMono (chans[0], numSamples);
-            break;
+    matrixReverb.processBlock (chans[0], numChannels > 0 ? chans[1] : NULL, preDelayVector.data(), sizeVector.data(), decayVector.data(), modFrequencyVector.data(), modDepthVector.data(), lowDampVector.data(), highDampVector.data(), 0, chans[0], numChannels > 0 ? chans[1] : NULL, numSamples);
 
-        case 2:
-            reverb.processStereo (chans[0], chans[1], numSamples);
-            break;
-
-        default:
-            break;
-    }
-
-    lpf.processBuffer (multibandBuffer, midi);
-    hpf.processBuffer (multibandBuffer, midi);
-
-    multibandBuffer.applyGain (wet);
     buffer.applyGain (dry);
+    multibandBuffer.applyGain (wet);
 
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
@@ -156,6 +252,7 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
+    // DBG (value);
     if (id == 1)
     {
         setBypass (value > 0);
@@ -183,23 +280,33 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
 void ReverbProcessor::releaseResources()
 {
     const ScopedLock sl (getCallbackLock());
-    reverb.reset();
+    matrixReverb.reset();
 }
 
-void ReverbProcessor::updateReverbParams()
+void ReverbProcessor::updateReverbParams (int numSamples)
 {
-    Reverb::Parameters localParams;
-
-    localParams.roomSize = timeParam->get();
-    localParams.damping = 1.f;
-    localParams.wetLevel = 1.f;
-    localParams.dryLevel = 0.f;
-    localParams.width = 1;
-    localParams.freezeMode = 0;
+    auto updateSize = [] (std::vector<float>& vector, int sampleCount)
+    {
+        if (static_cast<int> (vector.size()) != sampleCount)
+            vector.resize (static_cast<unsigned long> (sampleCount));
+    };
 
     {
         const ScopedLock sl (getCallbackLock());
-        reverb.setParameters (localParams);
+        updateSize (preDelayVector, numSamples);
+        FloatVectorOperations::fill (preDelayVector.data(), preDelayParam->get(), numSamples);
+        updateSize (sizeVector, numSamples);
+        FloatVectorOperations::fill (sizeVector.data(), sizeParam->get(), numSamples);
+        updateSize (decayVector, numSamples);
+        FloatVectorOperations::fill (decayVector.data(), decayParam->get(), numSamples);
+        updateSize (modFrequencyVector, numSamples);
+        FloatVectorOperations::fill (modFrequencyVector.data(), modFrequencyParam->get(), numSamples);
+        updateSize (modDepthVector, numSamples);
+        FloatVectorOperations::fill (modDepthVector.data(), modDepthParam->get(), numSamples);
+        updateSize (lowDampVector, numSamples);
+        FloatVectorOperations::fill (lowDampVector.data(), lowDampParam->get(), numSamples);
+        updateSize (highDampVector, numSamples);
+        FloatVectorOperations::fill (highDampVector.data(), highDampParam->get(), numSamples);
     }
 }
 }
