@@ -46,9 +46,8 @@ private:
 
     std::vector<float> preDelayVector, sizeVector, decayVector, modFrequencyVector, modDepthVector, lowDampVector, highDampVector;
 
-
     void updateReverbParams (int numSamples);
-    int maxBlockSize = 16384 * 4;
+    int maxBlockSize = 16384 * 8;
 
     int idNumber = 1;
     DigitalFilter hpf;
