@@ -508,17 +508,18 @@ public:
                                                                              if (value < 0.0f)
                                                                              {
                                                                                  float posFreq = value + 1.f;
-                                                                                 float freqHz = frequencyFromNormRange (mapNormRangeToInternalLPFRange (posFreq));
+                                                                                 float freqHz = pioneerLPFMapping (posFreq);
                                                                                  // For now, use int for min
-                                                                                 if (static_cast<int> (freqHz) == 100)
-                                                                                     freqHz = 100;
+                                                                                 if (static_cast<int> (freqHz) <= 50)
+                                                                                     freqHz = 50;
                                                                                  return String (freqHz, 0);
                                                                              }
                                                                              else
                                                                              {
-                                                                                 float freqHz = frequencyFromNormRange (mapNormRangeToInternalHPFRange (value));
+                                                                                 float freqHz = pioneerHPFMapping (value);
+                                                                                 ;
                                                                                  // For now, use int for max
-                                                                                 if (static_cast<int> (freqHz) == 8000)
+                                                                                 if (static_cast<int> (freqHz) > 8000)
                                                                                      freqHz = 8000;
                                                                                  return String (freqHz, 0);
                                                                              }
@@ -624,6 +625,60 @@ public:
         float normalizedOutput = (expValue - 1.0f) / (std::exp (1.0f) - 1.0f);// Normalize to [0, 1] range
         return outMin + normalizedOutput * (outMax - outMin);// Scale to output range
     }
+
+    float exponentialMapping (float input, float minFreq = 150.f, float maxFreq = 8000.0f, float k = 6.0f)
+    {
+        return minFreq + (maxFreq - minFreq) * pow (input, k);
+    }
+
+    inline float pioneerHPFMapping (float inputValue)
+    {
+        // Coefficients for the 6th-degree polynomial fit
+        constexpr float a6 = -396735.47f;
+        constexpr float a5 = 1033120.93f;
+        constexpr float a4 = -979111.84f;
+        constexpr float a3 = 428525.14f;
+        constexpr float a2 = -83922.40f;
+        constexpr float a1 = 6087.29f;
+        constexpr float a0 = 42.74f;
+
+        // Compute the polynomial output: f(x) = a6*x^6 + a5*x^5 + a4*x^4 + a3*x^3 + a2*x^2 + a1*x + a0
+        return a6 * pow (inputValue, 6) + a5 * pow (inputValue, 5) + a4 * pow (inputValue, 4) + a3 * pow (inputValue, 3) + a2 * pow (inputValue, 2) + a1 * inputValue + a0;
+
+        // Coefficients for the 3rd-degree polynomial fit
+        // While this is less intensive, accuracy is lowt
+        //        constexpr float a3 = 11165.82f;
+        //        constexpr float a2 = -2128.85f;
+        //        constexpr float a1 = -754.11f;
+        //        constexpr float a0 = 154.48f;
+        //
+        //        // Compute the polynomial output: f(x) = a3*x^3 + a2*x^2 + a1*x + a0
+        //        float frequency = a3 * pow (inputValue, 3) + a2 * pow (inputValue, 2) + a1 * inputValue + a0;
+        //
+        //        return frequency;
+
+        // Piecewise polynomial function to map input values to frequencies
+    }
+
+    inline float
+        pioneerLPFMapping (float inputValue)
+    {
+        // Use `constexpr` for compile-time constants with `float` precision
+        constexpr float a9 = 1.57474984e+07f;
+        constexpr float a8 = -7.05167639e+07f;
+        constexpr float a7 = 1.32128728e+08f;
+        constexpr float a6 = -1.34474871e+08f;
+        constexpr float a5 = 8.07363513e+07f;
+        constexpr float a4 = -2.90214330e+07f;
+        constexpr float a3 = 6.03918482e+06f;
+        constexpr float a2 = -6.53831920e+05f;
+        constexpr float a1 = 2.80876786e+04f;
+        constexpr float a0 = 50.0f;
+
+        // Use Horner's method for polynomial evaluation
+        return (((((((((a9 * inputValue + a8) * inputValue + a7) * inputValue + a6) * inputValue + a5) * inputValue + a4) * inputValue + a3) * inputValue + a2) * inputValue + a1) * inputValue + a0);
+    }
+
     void parameterValueChanged (int paramNum, float value) override
     {
         // For testing, remove lock
@@ -632,11 +687,14 @@ public:
         {
             // Frequency change
             auto lpFreqFull = jmin (1.f, value + 1.f);
-            auto internalLPFreq = frequencyFromNormRange (mapNormRangeToInternalLPFRange (lpFreqFull));
-            lpf.setNormFreq (mapNormRangeToInternalLPFRange (lpFreqFull));
+            auto internalLPFreq = pioneerLPFMapping (lpFreqFull);
+            lpf.setFreq (internalLPFreq);
             auto hpFreqFull = jmax (0.f, value);
-            auto internalHPFFreq = frequencyFromNormRange (mapNormRangeToInternalLPFRange (hpFreqFull));
-            hpf.setNormFreq (mapNormRangeToInternalHPFRange (hpFreqFull));
+            //            auto internalHPFFreq = frequencyFromNormRange (mapNormRangeToInternalLPFRange (hpFreqFull));
+            //            hpf.setNormFreq (mapNormRangeToInternalHPFRange (hpFreqFull));
+            auto internalHPFFreq = pioneerHPFMapping (hpFreqFull);
+            hpf.setFreq (internalHPFFreq);
+
             // if cutoff is set to bypass mode, switch off both processing
             // TODO: use approximatelyEqual when it's finally fixed
             if (abs (value) < 0.001f)
@@ -764,8 +822,8 @@ private:
 
     const float lpMinFreq = 100.f;
     const float lpMaxFreq = 16000.f;
-    const float hpMinFreq = 100.f;
-    const float hpMaxFreq = 8000.f;
+    const float hpMinFreq = 40.f;
+    const float hpMaxFreq = 8000.0f;
 };
 
 ///-------------------------------------------------------
