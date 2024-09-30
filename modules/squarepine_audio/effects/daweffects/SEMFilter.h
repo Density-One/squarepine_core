@@ -543,8 +543,8 @@ public:
 
         hpf.setFilterType (DigitalFilter::FilterType::HPF);
         lpf.setFilterType (DigitalFilter::FilterType::LPF);
-        lpf.setFreq (20000);
-        hpf.setFreq (100);
+        lpf.setFreq (16000);
+        hpf.setFreq (50);
 
         updateHighPassQ (hpQ, hpQReduction);
         updateLowPassQ (lpQ, lpQReduction);
@@ -597,86 +597,65 @@ public:
         return (std::log10 (frequency / 2.f) - 1.f) / 3.f;
     }
 
-    float mapNormRangeToInternalLPFRange (const float& normFrequency)
+    inline float pioneerHPFMapping (float input)
     {
-        static float lpMinNorm = getNormValueFromFrequency (lpMinFreq);
-        static float lpMaxNorm = getNormValueFromFrequency (lpMaxFreq);
-        return jmap (normFrequency, lpMinNorm, lpMaxNorm);
-    }
-    float mapNormRangeToInternalHPFRange (const float& normFrequency)
-    {
-        static float hpMinNorm = getNormValueFromFrequency (hpMinFreq);
-        static float hpMaxNorm = getNormValueFromFrequency (hpMaxFreq);
-        return jmap (normFrequency, hpMinNorm, hpMaxNorm);
-    }
-    // Logarithmic mapping function
-    float logMap (float value, float inMin, float inMax, float outMin, float outMax)
-    {
-        float normalizedInput = (value - inMin) / (inMax - inMin);// Normalize input value
-        float logValue = std::log (normalizedInput + 1.0f);// Apply logarithmic mapping
-        float normalizedOutput = logValue / std::log (2.0f);// Normalize to [0, 1] range
-        return outMin + normalizedOutput * (outMax - outMin);// Scale to output range
-    }
-    // Exponential mapping function
-    float expMap (float value, float inMin, float inMax, float outMin, float outMax)
-    {
-        float normalizedInput = (value - inMin) / (inMax - inMin);// Normalize input value
-        float expValue = std::exp (normalizedInput);// Apply exponential mapping
-        float normalizedOutput = (expValue - 1.0f) / (std::exp (1.0f) - 1.0f);// Normalize to [0, 1] range
-        return outMin + normalizedOutput * (outMax - outMin);// Scale to output range
-    }
+        // Define the high-pass filter inputs and corresponding target frequencies
+        constexpr std::array<float, 10> highPassInputs = { 0.0f, 0.165354f, 0.275591f, 0.377953f, 0.496063f, 0.622f, 0.724409f, 0.84252f, 0.968504f, 1.0f };
+        constexpr std::array<float, 10> highPassFrequencies = { 10.0f, 50.0f, 90.0f, 200.0f, 400.0f, 800.0f, 1600.0f, 3200.0f, 6900.0f, 8200.0f };
 
-    float exponentialMapping (float input, float minFreq = 150.f, float maxFreq = 8000.0f, float k = 6.0f)
-    {
-        return minFreq + (maxFreq - minFreq) * pow (input, k);
-    }
+        // Precompute slopes between adjacent points for efficiency
+        constexpr std::array<float, 9> highPassSlopes = [highPassInputs, highPassFrequencies]()
+        {
+            std::array<float, 9> temp {};
+            for (size_t i = 0; i < temp.size(); ++i)
+            {
+                temp[i] = (highPassFrequencies[i + 1] - highPassFrequencies[i]) / (highPassInputs[i + 1] - highPassInputs[i]);
+            }
+            return temp;
+        }();
 
-    inline float pioneerHPFMapping (float inputValue)
-    {
-        // Coefficients for the 6th-degree polynomial fit
-        constexpr float a6 = -396735.47f;
-        constexpr float a5 = 1033120.93f;
-        constexpr float a4 = -979111.84f;
-        constexpr float a3 = 428525.14f;
-        constexpr float a2 = -83922.40f;
-        constexpr float a1 = 6087.29f;
-        constexpr float a0 = 42.74f;
+        // Clamp the input to the valid range [0, 1]
+        if (input <= 0.0f)
+            return highPassFrequencies[0];
+        if (input >= 1.0f)
+            return highPassFrequencies[9];
 
-        // Compute the polynomial output: f(x) = a6*x^6 + a5*x^5 + a4*x^4 + a3*x^3 + a2*x^2 + a1*x + a0
-        return a6 * pow (inputValue, 6) + a5 * pow (inputValue, 5) + a4 * pow (inputValue, 4) + a3 * pow (inputValue, 3) + a2 * pow (inputValue, 2) + a1 * inputValue + a0;
+        // Binary search to find the correct segment index
+        size_t idx = std::lower_bound (highPassInputs.begin(), highPassInputs.end(), input) - highPassInputs.begin() - 1;
 
-        // Coefficients for the 3rd-degree polynomial fit
-        // While this is less intensive, accuracy is lowt
-        //        constexpr float a3 = 11165.82f;
-        //        constexpr float a2 = -2128.85f;
-        //        constexpr float a1 = -754.11f;
-        //        constexpr float a0 = 154.48f;
-        //
-        //        // Compute the polynomial output: f(x) = a3*x^3 + a2*x^2 + a1*x + a0
-        //        float frequency = a3 * pow (inputValue, 3) + a2 * pow (inputValue, 2) + a1 * inputValue + a0;
-        //
-        //        return frequency;
-
-        // Piecewise polynomial function to map input values to frequencies
+        // Perform linear interpolation using the precomputed slope
+        return highPassFrequencies[idx] + highPassSlopes[idx] * (input - highPassInputs[idx]);
     }
 
     inline float
-        pioneerLPFMapping (float inputValue)
+        pioneerLPFMapping (float input)
     {
-        // Use `constexpr` for compile-time constants with `float` precision
-        constexpr float a9 = 1.57474984e+07f;
-        constexpr float a8 = -7.05167639e+07f;
-        constexpr float a7 = 1.32128728e+08f;
-        constexpr float a6 = -1.34474871e+08f;
-        constexpr float a5 = 8.07363513e+07f;
-        constexpr float a4 = -2.90214330e+07f;
-        constexpr float a3 = 6.03918482e+06f;
-        constexpr float a2 = -6.53831920e+05f;
-        constexpr float a1 = 2.80876786e+04f;
-        constexpr float a0 = 50.0f;
+        // Define the low-pass filter inputs and target frequencies using constexpr arrays
+        constexpr std::array<float, 11> lowPassInputs = { 0.0f, 0.019f, 0.0669f, 0.141f, 0.1889f, 0.25f, 0.318f, 0.374f, 0.433f, 0.48f, 1.0f };
+        constexpr std::array<float, 11> lowPassFrequencies = { 50.0f, 100.0f, 190.0f, 400.0f, 650.0f, 1250.0f, 2500.0f, 4000.0f, 7500.0f, 12500.0f, 16000.0f };
 
-        // Use Horner's method for polynomial evaluation
-        return (((((((((a9 * inputValue + a8) * inputValue + a7) * inputValue + a6) * inputValue + a5) * inputValue + a4) * inputValue + a3) * inputValue + a2) * inputValue + a1) * inputValue + a0);
+        // Precomputed slopes between adjacent points to avoid real-time calculations
+        constexpr std::array<float, 10> lowPassSlopes = [lowPassFrequencies, lowPassInputs]()
+        {
+            std::array<float, 10> temp {};
+            for (size_t i = 0; i < temp.size(); ++i)
+            {
+                temp[i] = (lowPassFrequencies[i + 1] - lowPassFrequencies[i]) / (lowPassInputs[i + 1] - lowPassInputs[i]);
+            }
+            return temp;
+        }();
+
+        // Clamp the input to the valid range [0, 1]
+        if (input <= 0.0f)
+            return lowPassFrequencies[0];
+        if (input >= 1.0f)
+            return lowPassFrequencies[10];
+
+        // Binary search to find the correct segment index
+        size_t idx = std::lower_bound (lowPassInputs.begin(), lowPassInputs.end(), input) - lowPassInputs.begin() - 1;
+
+        // Perform linear interpolation using the precomputed slope
+        return lowPassFrequencies[idx] + lowPassSlopes[idx] * (input - lowPassInputs[idx]);
     }
 
     void parameterValueChanged (int paramNum, float value) override
@@ -690,8 +669,6 @@ public:
             auto internalLPFreq = pioneerLPFMapping (lpFreqFull);
             lpf.setFreq (internalLPFreq);
             auto hpFreqFull = jmax (0.f, value);
-            //            auto internalHPFFreq = frequencyFromNormRange (mapNormRangeToInternalLPFRange (hpFreqFull));
-            //            hpf.setNormFreq (mapNormRangeToInternalHPFRange (hpFreqFull));
             auto internalHPFFreq = pioneerHPFMapping (hpFreqFull);
             hpf.setFreq (internalHPFFreq);
 
