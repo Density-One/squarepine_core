@@ -267,7 +267,7 @@ public:
 
     void setQValue (float newQ)
     {
-        qTarget = jlimit (0.1f, 10.0f, newQ);
+        qTarget = jlimit (0.05f, 10.0f, newQ);
         updateCoefficients();
     }
 
@@ -734,7 +734,7 @@ public:
         hpQReduction = jlimit (0.0f, 1.f, qReductionNormalized);
         hpQ = value;
         // Keep the original range but map it internally to 0.01 - 5 which better represents hardware sonically
-        hpf.setQValue (jmap (jlimit (0.01f, 8.7f, hpQ - (hpQReduction * hpQ)) + 0.3f, 0.01f, 10.0f, 0.f, 5.f));
+        hpf.setQValue (jmap (jlimit (0.01f, 8.7f, hpQ - (hpQReduction * hpQ)) + 0.3f, 0.01f, 10.0f, 0.01f, 3.5f));
     }
     void updateLowPassQ (float value, float qReductionNormalized)
     {
@@ -742,7 +742,7 @@ public:
         lpQReduction = jlimit (0.0f, 1.f, qReductionNormalized);
         lpQ = value;
         // Keep the original range but map it internally to 0.01 - 5 which better represents hardware sonically
-        lpf.setQValue (jmap (jlimit (0.01f, 8.7f, lpQ - (lpQReduction * lpQ) + 0.3f), 0.01f, 10.0f, 0.f, 5.f));
+        lpf.setQValue (jmap (jlimit (0.01f, 8.7f, lpQ - (lpQReduction * lpQ) + 0.3f), 0.01f, 10.0f, 0.01f, 3.5f));
     }
     void parameterGestureChanged (int, bool) override {}
 
