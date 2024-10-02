@@ -44,8 +44,6 @@ private:
     float output[8];
     float feedback[8];
     
-    float sizeRange;
-    
 public:
     
     MatrixReverb8x8_Core()
@@ -110,7 +108,7 @@ public:
             
             // delay times with continous scaling
             
-            float timeScale = 1.f + 9.f * sizeRange * inSize[frame];
+            float timeScale = 1.f + 9.f * inSize[frame];
 
             float time0 = delayTime[3]  * timeScale + inDelayTimeOffset;
             float time1 = delayTime[4]  * timeScale - inDelayTimeOffset;

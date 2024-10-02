@@ -44,8 +44,6 @@ private:
     float output[4];
     float feedback[4];
     
-    float sizeRange;
-    
 public:
     
     MatrixReverb4x4_Core()
@@ -68,13 +66,6 @@ public:
         }
         
         mDampingFilter.setSampleRate( inSampleRate );
-        
-        // clip size range according to the maximum possible delay time
-        
-        sizeRange = mDelay[0].getMaxDelayTime() * 0.1f / delayTime[10];
-        
-        if( sizeRange > 1.f )
-            sizeRange = 1.f;
         
         reset();
         
@@ -115,7 +106,7 @@ public:
             
             // delay times with continous scaling
             
-            float timeScale = 1.f + 9.f * sizeRange * inSize[frame];
+            float timeScale = 1.f + 9.f * inSize[frame];
 
             float time0 = delayTime[3] * timeScale + inDelayTimeOffset;
             float time1 = delayTime[5] * timeScale - inDelayTimeOffset;
