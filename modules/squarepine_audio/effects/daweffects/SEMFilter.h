@@ -701,15 +701,18 @@ public:
 
             // Here we rollof the resonance for the filters if their corresponding frequencies are below 200hz
             // This should be around 200 hz
-            if (value > 0 && internalHPFFreq < 200)
+
+            if (value > 0 && internalHPFFreq < resonanceDipThreshold)
             {
+                auto normalizedReductionAmount = (resonanceDipThreshold - internalHPFFreq) / (resonanceDipThreshold - hpMinFreq);
                 // coeff should be 1 when at the lowest value
-                updateHighPassQ (hpQ, 200.0f / (internalHPFFreq + hpMinFreq));
+                updateHighPassQ (hpQ, normalizedReductionAmount);
             }
-            else if (value < 0 && internalLPFreq < 200)
+            else if (value < 0 && internalLPFreq < resonanceDipThreshold)
             {
+                auto normalizedReductionAmount = (resonanceDipThreshold - internalLPFreq) / (resonanceDipThreshold - hpMinFreq);
                 // coeff should be 1 when at the lowest value
-                updateLowPassQ (lpQ, 200.0f / (internalLPFreq + lpMinFreq));
+                updateLowPassQ (lpQ, normalizedReductionAmount);
             }
             else
             {
@@ -807,6 +810,7 @@ private:
     float lpQ = 0.707f;
     float lpQReduction = 0.0f;
 
+    const float resonanceDipThreshold = 200.f;
     const float lpMinFreq = 50.f;
     const float lpMaxFreq = 12500.f;
     const float hpMinFreq = 10.f;
