@@ -631,18 +631,9 @@ public:
         pioneerLPFMapping (float input)
     {
         //
-        constexpr float skewFactor = 1.3f;// Adjust this factor for more or less skew
-        constexpr float skewThreshold = 0.755f;// Threshold for starting skewing
-
-        // Apply skewing only if the input is in the upper registers (above the threshold)
-        if (input > skewThreshold)
-        {
-            // Transform only the high-end range using a power function
-            input = skewThreshold + std::pow ((input - skewThreshold) / (1.0f - skewThreshold), skewFactor) * (1.0f - skewThreshold);
-        }
         // Define the low-pass filter inputs and target frequencies using constexpr arrays
         constexpr std::array<float, 10> lowPassInputs = { 0.0f, 0.023f, 0.173f, 0.291f, 0.385f, 0.488f, 0.637f, 0.755f, 0.866f, 1.0f };
-        constexpr std::array<float, 10> lowPassFrequencies = { 50.0f, 120.0f, 240.f, 440.f, 680.0f, 1250.0f, 2500.0f, 4400.f, 7400.f, 12500.f };
+        constexpr std::array<float, 10> lowPassFrequencies = { 50.f, 120.0f, 240.f, 440.f, 680.0f, 1250.0f, 2500.0f, 4400.f, 7400.f, 12500.f };
 
         // Precomputed slopes between adjacent points to avoid real-time calculations
         constexpr std::array<float, 9> lowPassSlopes = [lowPassFrequencies, lowPassInputs]()
@@ -674,31 +665,40 @@ public:
         const ScopedLock sl (getCallbackLock());
         if (paramNum == 1)
         {
-            // Frequency change
-            auto lpFreqFull = jmin (1.f, value + 1.f);
-            auto internalLPFreq = jmax (pioneerLPFMapping (lpFreqFull), 120.f);
-            lpf.setFreq (internalLPFreq);
-            auto hpFreqFull = jmax (0.f, value);
-            auto internalHPFFreq = pioneerHPFMapping (hpFreqFull);
-            hpf.setFreq (internalHPFFreq);
-
             // if cutoff is set to bypass mode, switch off both processing
             // TODO: use approximatelyEqual when it's finally fixed
-            if (abs (value) < 0.001f)
+
+            bool bypassLPF = false;
+            bool bypassHPF = false;
+
+            if (abs (value) < 0.01f)
             {
                 mixLPF.setTargetValue (0.f);
                 mixHPF.setTargetValue (0.f);
+                bypassLPF = true;
+                bypassHPF = true;
             }
             else if (value < 0.f)
             {
                 mixLPF.setTargetValue (1.f);
                 mixHPF.setTargetValue (0.f);
+                bypassHPF = true;
             }
             else if (value > 0.f)
             {
                 mixLPF.setTargetValue (0.f);
                 mixHPF.setTargetValue (1.f);
+                bypassLPF = true;
             }
+
+            // Frequency change
+            auto lpFreqFull = jmin (1.f, value + 1.f);
+            auto internalLPFreq = bypassLPF ? lpMaxFreq : jmax (pioneerLPFMapping (lpFreqFull), 120.f);
+            lpf.setFreq (internalLPFreq);
+            auto hpFreqFull = jmax (0.f, value);
+            auto internalHPFFreq = bypassHPF ? hpMinFreq : pioneerHPFMapping (hpFreqFull);
+            hpf.setFreq (internalHPFFreq);
+
             // Here we rollof the resonance for the filters if their corresponding frequencies are below 200hz
             // This should be around 200 hz
             if (value > 0 && internalHPFFreq < 200)
@@ -807,10 +807,10 @@ private:
     float lpQ = 0.707f;
     float lpQReduction = 0.0f;
 
-    const float lpMinFreq = 120;
-    const float lpMaxFreq = 16000.f;
-    const float hpMinFreq = 40.f;
-    const float hpMaxFreq = 8000.0f;
+    const float lpMinFreq = 50.f;
+    const float lpMaxFreq = 12500.f;
+    const float hpMinFreq = 10.f;
+    const float hpMaxFreq = 8200.0f;
 };
 
 ///-------------------------------------------------------
