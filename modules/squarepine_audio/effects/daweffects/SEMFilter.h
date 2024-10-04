@@ -483,9 +483,214 @@ public:
     }
 };
 
+template<typename T>
+class FilterFrequencyMapper
+{
+public:
+    virtual ~FilterFrequencyMapper() = default;
+    // Obtain a frequency value from a number between 0 and 1
+    virtual T getFrequencyFromNormalized (const T& value) const = 0;
+    // Obtain normalized value for a given frequency
+    virtual T getNormalizedValueFromFrequency (const T& frequency) const = 0;
+};
+
+enum class MixerType
+{
+    GENERIC = 0,
+    V10
+};
+
+template<typename T>
+class MixerFilterMapper
+{
+public:
+    enum class FilterType
+    {
+        HPF = 0,
+        LPF
+    };
+
+    virtual ~MixerFilterMapper() = default;
+
+    MixerFilterMapper (MixerType type, std::unique_ptr<FilterFrequencyMapper<T>> hpfMapper, std::unique_ptr<FilterFrequencyMapper<T>> lpfMapper)
+        : mixerType (type),
+          highPassFrequencyMapper (std::move (hpfMapper)),
+          lowPassFrequencyMapper (std::move (lpfMapper))
+    {
+        jassert (highPassFrequencyMapper != nullptr);
+        jassert (lowPassFrequencyMapper != nullptr);
+    }
+
+    T getFrequencyFromNormalized (MixerFilterMapper::FilterType filter, const T& value) const
+    {
+        jassert (highPassFrequencyMapper != nullptr);
+        jassert (lowPassFrequencyMapper != nullptr);
+
+        if (filter == MixerFilterMapper::FilterType::HPF)
+            return highPassFrequencyMapper->getFrequencyFromNormalized (value);
+        else if (filter == MixerFilterMapper::FilterType::LPF)
+            return lowPassFrequencyMapper->getFrequencyFromNormalized (value);
+        else
+        {
+            jassertfalse;
+            return 0.;
+        }
+    }
+    T getNormalizedValueFromFrequency (FilterType filter, const T& frequency) const
+    {
+        jassert (highPassFrequencyMapper != nullptr);
+        jassert (lowPassFrequencyMapper != nullptr);
+
+        if (filter == MixerFilterMapper::FilterType::HPF)
+            return highPassFrequencyMapper->getNormalizedValueFromFrequency (frequency);
+        else if (filter == MixerFilterMapper::FilterType::LPF)
+            return lowPassFrequencyMapper->getNormalizedValueFromFrequency (frequency);
+        else
+        {
+            jassertfalse;
+            return 0.;
+        }
+    }
+
+    MixerType getMixerType()
+    {
+        return mixerType;
+    }
+private:
+    MixerType mixerType;
+
+    std::unique_ptr<FilterFrequencyMapper<T>> highPassFrequencyMapper;
+    std::unique_ptr<FilterFrequencyMapper<T>> lowPassFrequencyMapper;
+};
+
+template<typename T>
+class V10HighPassFilterMapper : public FilterFrequencyMapper<T>
+{
+public:
+    V10HighPassFilterMapper()
+    {
+        // Precompute slopes between adjacent points for efficiency
+        for (size_t i = 0; i < highPassSlopes.size(); ++i)
+        {
+            highPassSlopes[i] = (highPassFrequencies[i + 1] - highPassFrequencies[i]) / (highPassInputs[i + 1] - highPassInputs[i]);
+        }
+    }
+
+    T getFrequencyFromNormalized (const T& input) const override
+    {
+        // Clamp the input to the valid range [0, 1]
+        if (input <= static_cast<T> (0.0))
+            return highPassFrequencies[0];
+        if (input >= static_cast<T> (1.0))
+            return highPassFrequencies[9];
+
+        // Binary search to find the correct segment index
+        size_t idx = std::lower_bound (highPassInputs.begin(), highPassInputs.end(), input) - highPassInputs.begin() - 1;
+
+        // Perform linear interpolation using the precomputed slope
+        return highPassFrequencies[idx] + highPassSlopes[idx] * (input - highPassInputs[idx]);
+    }
+
+    T getNormalizedValueFromFrequency (const T& frequency) const override
+    {
+        // Clamp the frequency to the valid range
+        if (frequency <= highPassFrequencies[0])
+            return highPassInputs[0];
+        if (frequency >= highPassFrequencies[9])
+            return highPassInputs[9];
+
+        // Binary search to find the correct segment index
+        size_t idx = std::lower_bound (highPassFrequencies.begin(), highPassFrequencies.end(), frequency) - highPassFrequencies.begin() - 1;
+
+        // Perform linear interpolation using the precomputed slope
+        return highPassInputs[idx] + (frequency - highPassFrequencies[idx]) / highPassSlopes[idx];
+    }
+private:
+    // Define the high-pass filter inputs and corresponding target frequencies as template arrays
+    static constexpr std::array<T, 10> highPassInputs = { static_cast<T> (0.0), static_cast<T> (0.165354), static_cast<T> (0.275591), static_cast<T> (0.377953), static_cast<T> (0.496063), static_cast<T> (0.622), static_cast<T> (0.724409), static_cast<T> (0.84252), static_cast<T> (0.968504), static_cast<T> (1.0) };
+    static constexpr std::array<T, 10> highPassFrequencies = { static_cast<T> (10.0), static_cast<T> (50.0), static_cast<T> (90.0), static_cast<T> (200.0), static_cast<T> (400.0), static_cast<T> (800.0), static_cast<T> (1600.0), static_cast<T> (3200.0), static_cast<T> (6900.0), static_cast<T> (8200.0) };
+    std::array<T, 9> highPassSlopes {};// Slopes between adjacent points
+};
+
+template<typename T>
+class V10LowPassFilterMapper : public FilterFrequencyMapper<T>
+{
+public:
+    V10LowPassFilterMapper()
+    {
+        // Precompute slopes between adjacent points for efficiency
+        for (size_t i = 0; i < lowPassSlopes.size(); ++i)
+        {
+            lowPassSlopes[i] = (lowPassFrequencies[i + 1] - lowPassFrequencies[i]) / (lowPassInputs[i + 1] - lowPassInputs[i]);
+        }
+    }
+
+    T getFrequencyFromNormalized (const T& input) const override
+    {
+        // Clamp the input to the valid range [0, 1]
+        if (input <= static_cast<T> (0.0))
+            return lowPassFrequencies[0];
+        if (input >= static_cast<T> (1.0))
+            return lowPassFrequencies[9];
+
+        // Binary search to find the correct segment index
+        size_t idx = std::lower_bound (lowPassInputs.begin(), lowPassInputs.end(), input) - lowPassInputs.begin() - 1;
+
+        // Perform linear interpolation using the precomputed slope
+        return lowPassFrequencies[idx] + lowPassSlopes[idx] * (input - lowPassInputs[idx]);
+    }
+
+    T getNormalizedValueFromFrequency (const T& frequency) const override
+    {
+        // Clamp the frequency to the valid range
+        if (frequency <= lowPassFrequencies[0])
+            return lowPassInputs[0];
+        if (frequency >= lowPassFrequencies[9])
+            return lowPassInputs[9];
+
+        // Binary search to find the correct segment index
+        size_t idx = std::lower_bound (lowPassFrequencies.begin(), lowPassFrequencies.end(), frequency) - lowPassFrequencies.begin() - 1;
+
+        // Perform linear interpolation using the precomputed slope
+        return lowPassInputs[idx] + (frequency - lowPassFrequencies[idx]) / lowPassSlopes[idx];
+    }
+private:
+    // Define the low-pass filter inputs and corresponding target frequencies as template arrays
+    static constexpr std::array<T, 10> lowPassInputs = { static_cast<T> (0.0), static_cast<T> (0.023), static_cast<T> (0.173), static_cast<T> (0.291), static_cast<T> (0.385), static_cast<T> (0.488), static_cast<T> (0.637), static_cast<T> (0.755), static_cast<T> (0.866), static_cast<T> (1.0) };
+    static constexpr std::array<T, 10> lowPassFrequencies = { static_cast<T> (50.0), static_cast<T> (120.0), static_cast<T> (240.0), static_cast<T> (440.0), static_cast<T> (680.0), static_cast<T> (1250.0), static_cast<T> (2500.0), static_cast<T> (4400.0), static_cast<T> (7400.0), static_cast<T> (12500.0) };
+    std::array<T, 9> lowPassSlopes {};// Slopes between adjacent points
+};
+
+// In time this should support switching between different mapping strategies
+template<typename T>
+class MixerFilterManager
+{
+public:
+    MixerFilterManager()
+        : activefilterMapper (MixerType::V10,
+                              std::make_unique<V10HighPassFilterMapper<T>>(),
+                              std::make_unique<V10LowPassFilterMapper<T>>())
+    {
+    }
+
+    T getFrequencyFromNormalized (MixerFilterMapper<float>::FilterType filter, const T& input)
+    {
+        return activefilterMapper.getFrequencyFromNormalized (filter, input);
+    }
+    T getNormalizedValueFromFrequency (typename MixerFilterMapper<float>::FilterType filter, const T& frequency)
+    {
+        return activefilterMapper.getNormalizedValueFromFrequency (filter, frequency);
+    }
+private:
+    MixerFilterMapper<T> activefilterMapper;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MixerFilterManager);
+};
+
 // The SEMFilter in the DJDAW is a combination of both a LPF and HPF
 // By changing the value of the cut-off parameter to be above 0 (halfway),
 // the filter becomes a HPF. If the value is below 0, it is a LPF
+// The main frequency range should always be -1 to 1 so that it can be cleanly remapped to different responses
 class SEMFilter final : public InternalProcessor,
                         public AudioProcessorParameter::Listener
 {
@@ -508,7 +713,7 @@ public:
                                                                              if (value < 0.0f)
                                                                              {
                                                                                  float posFreq = value + 1.f;
-                                                                                 float freqHz = pioneerLPFMapping (posFreq);
+                                                                                 float freqHz = mapLPF (posFreq);
                                                                                  // For now, use int for min
                                                                                  if (static_cast<int> (freqHz) <= 50)
                                                                                      freqHz = 50;
@@ -516,7 +721,7 @@ public:
                                                                              }
                                                                              else
                                                                              {
-                                                                                 float freqHz = pioneerHPFMapping (value);
+                                                                                 float freqHz = mapHPF (value);
                                                                                  ;
                                                                                  // For now, use int for max
                                                                                  if (static_cast<int> (freqHz) > 8000)
@@ -597,68 +802,22 @@ public:
         return (std::log10 (frequency / 2.f) - 1.f) / 3.f;
     }
 
-    inline float pioneerHPFMapping (float input)
+    JUCE_NODISCARD MixerFilterManager<float>& getFilterMappingManager()
     {
-        // Define the high-pass filter inputs and corresponding target frequencies
-        constexpr std::array<float, 10> highPassInputs = { 0.0f, 0.165354f, 0.275591f, 0.377953f, 0.496063f, 0.622f, 0.724409f, 0.84252f, 0.968504f, 1.0f };
-        constexpr std::array<float, 10> highPassFrequencies = { 10.0f, 50.0f, 90.0f, 200.0f, 400.0f, 800.0f, 1600.0f, 3200.0f, 6900.0f, 8200.0f };
-
-        // Precompute slopes between adjacent points for efficiency
-        constexpr std::array<float, 9> highPassSlopes = [highPassInputs, highPassFrequencies]()
-        {
-            std::array<float, 9> temp {};
-            for (size_t i = 0; i < temp.size(); ++i)
-            {
-                temp[i] = (highPassFrequencies[i + 1] - highPassFrequencies[i]) / (highPassInputs[i + 1] - highPassInputs[i]);
-            }
-            return temp;
-        }();
-
-        // Clamp the input to the valid range [0, 1]
-        if (input <= 0.0f)
-            return highPassFrequencies[0];
-        if (input >= 1.0f)
-            return highPassFrequencies[9];
-
-        // Binary search to find the correct segment index
-        size_t idx = std::lower_bound (highPassInputs.begin(), highPassInputs.end(), input) - highPassInputs.begin() - 1;
-
-        // Perform linear interpolation using the precomputed slope
-        return highPassFrequencies[idx] + highPassSlopes[idx] * (input - highPassInputs[idx]);
+        return filterMappingManager;
     }
-
+private:
+    // these are here for convenience and are only used internally
+    inline float mapHPF (float input)
+    {
+        return filterMappingManager.getFrequencyFromNormalized (MixerFilterMapper<float>::FilterType::HPF, input);
+    }
     inline float
-        pioneerLPFMapping (float input)
+        mapLPF (float input)
     {
-        //
-        // Define the low-pass filter inputs and target frequencies using constexpr arrays
-        constexpr std::array<float, 10> lowPassInputs = { 0.0f, 0.023f, 0.173f, 0.291f, 0.385f, 0.488f, 0.637f, 0.755f, 0.866f, 1.0f };
-        constexpr std::array<float, 10> lowPassFrequencies = { 50.f, 120.0f, 240.f, 440.f, 680.0f, 1250.0f, 2500.0f, 4400.f, 7400.f, 12500.f };
-
-        // Precomputed slopes between adjacent points to avoid real-time calculations
-        constexpr std::array<float, 9> lowPassSlopes = [lowPassFrequencies, lowPassInputs]()
-        {
-            std::array<float, 9> temp {};
-            for (size_t i = 0; i < temp.size(); ++i)
-            {
-                temp[i] = (lowPassFrequencies[i + 1] - lowPassFrequencies[i]) / (lowPassInputs[i + 1] - lowPassInputs[i]);
-            }
-            return temp;
-        }();
-
-        // Clamp the input to the valid range [0, 1]
-        if (input <= 0.0f)
-            return lowPassFrequencies[0];
-        if (input >= 1.0f)
-            return lowPassFrequencies[10];
-
-        // Binary search to find the correct segment index
-        size_t idx = std::lower_bound (lowPassInputs.begin(), lowPassInputs.end(), input) - lowPassInputs.begin() - 1;
-
-        // Perform linear interpolation using the precomputed slope
-        return lowPassFrequencies[idx] + lowPassSlopes[idx] * (input - lowPassInputs[idx]);
+        return filterMappingManager.getFrequencyFromNormalized (MixerFilterMapper<float>::FilterType::LPF, input);
     }
-
+public:
     void parameterValueChanged (int paramNum, float value) override
     {
         // For testing, remove lock
@@ -693,23 +852,26 @@ public:
 
             // Frequency change
             auto lpFreqFull = jmin (1.f, value + 1.f);
-            auto internalLPFreq = bypassLPF ? lpMaxFreq : jmax (pioneerLPFMapping (lpFreqFull), 120.f);
+            auto internalLPFreq = bypassLPF ? lpMaxFreq : jmax (mapLPF (lpFreqFull), 120.f);
             lpf.setFreq (internalLPFreq);
             auto hpFreqFull = jmax (0.f, value);
-            auto internalHPFFreq = bypassHPF ? hpMinFreq : pioneerHPFMapping (hpFreqFull);
+            auto internalHPFFreq = bypassHPF ? hpMinFreq : mapHPF (hpFreqFull);
             hpf.setFreq (internalHPFFreq);
 
             // Here we rollof the resonance for the filters if their corresponding frequencies are below 200hz
             // This should be around 200 hz
-            if (value > 0 && internalHPFFreq < 200)
+
+            if (value > 0 && internalHPFFreq < resonanceDipThreshold)
             {
+                auto normalizedReductionAmount = (resonanceDipThreshold - internalHPFFreq) / (resonanceDipThreshold - hpMinFreq);
                 // coeff should be 1 when at the lowest value
-                updateHighPassQ (hpQ, 200.0f / (internalHPFFreq + hpMinFreq));
+                updateHighPassQ (hpQ, normalizedReductionAmount);
             }
-            else if (value < 0 && internalLPFreq < 200)
+            else if (value < 0 && internalLPFreq < resonanceDipThreshold)
             {
+                auto normalizedReductionAmount = (resonanceDipThreshold - internalLPFreq) / (resonanceDipThreshold - hpMinFreq);
                 // coeff should be 1 when at the lowest value
-                updateLowPassQ (lpQ, 200.0f / (internalLPFreq + lpMinFreq));
+                updateLowPassQ (lpQ, normalizedReductionAmount);
             }
             else
             {
@@ -807,10 +969,13 @@ private:
     float lpQ = 0.707f;
     float lpQReduction = 0.0f;
 
+    const float resonanceDipThreshold = 200.f;
     const float lpMinFreq = 50.f;
     const float lpMaxFreq = 12500.f;
     const float hpMinFreq = 10.f;
     const float hpMaxFreq = 8200.0f;
+
+    MixerFilterManager<float> filterMappingManager;
 };
 
 ///-------------------------------------------------------
