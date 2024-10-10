@@ -10,6 +10,11 @@
 #ifndef DampingFilter_h
 #define DampingFilter_h
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+
 class OnePoleLowPass
 {
     

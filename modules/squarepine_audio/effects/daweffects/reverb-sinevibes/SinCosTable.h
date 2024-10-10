@@ -12,6 +12,8 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #define SIN_COS_TABLE_SIZE 2048
 

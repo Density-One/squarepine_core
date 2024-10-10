@@ -166,6 +166,7 @@ String getInternalProcessorTypeName();
 //==============================================================================
 #include "effects/daweffects/reverb-sinevibes/DampingFilter.h"
 #include "effects/daweffects/reverb-sinevibes/InlineMath.h"
+#include "effects/daweffects/reverb-sinevibes/ChaosLFO.h"
 #include "effects/daweffects/reverb-sinevibes/LowCutFilter.h"
 #include "effects/daweffects/reverb-sinevibes/SimpleDelay.h"
 #include "effects/daweffects/reverb-sinevibes/SimpleLFO.h"

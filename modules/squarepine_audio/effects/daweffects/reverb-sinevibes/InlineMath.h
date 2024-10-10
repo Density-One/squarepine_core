@@ -10,6 +10,11 @@ Sinevibes (www.sinevibes.com)
 #ifndef InlineMath_h
 #define InlineMath_h
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+
 inline float inlineTaylorSine( float phase )
 {
     

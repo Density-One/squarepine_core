@@ -34,6 +34,7 @@ private:
 
     NotifiableAudioParameterFloat* decayParam = nullptr;
     NotifiableAudioParameterFloat* sizeParam = nullptr;
+    NotifiableAudioParameterFloat* scatteringParam = nullptr;
     NotifiableAudioParameterFloat* preDelayParam = nullptr;
     NotifiableAudioParameterFloat* modFrequencyParam = nullptr;
     NotifiableAudioParameterFloat* modDepthParam = nullptr;
@@ -44,7 +45,7 @@ private:
     AudioBuffer<float> reverbInputBuffer;
     AudioBuffer<float> reverbOutputBuffer;
 
-    std::vector<float> preDelayVector, sizeVector, decayVector, modFrequencyVector, modDepthVector, lowDampVector, highDampVector;
+    std::vector<float> preDelayVector, sizeVector, decayVector, scatteringVector, modFrequencyVector, modDepthVector, lowDampVector, highDampVector;
 
     void updateReverbParams (int numSamples);
     int maxBlockSize = 16384 * 8;

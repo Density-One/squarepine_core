@@ -12,6 +12,8 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #ifndef DampingFilter_h
 #include "DampingFilter.h"
@@ -23,6 +25,10 @@
 
 #ifndef SimpleLFO_h
 #include "SimpleLFO.h"
+#endif
+
+#ifndef ChaosLFO_h
+#include "ChaosLFO.h"
 #endif
 
 #ifndef DELAY_TIME_ARRAY
@@ -37,22 +43,47 @@ class MatrixReverb8x8_Core
     
 private:
     
+    int maxBlockSize;
+    
     SimpleDelay mDelay[8];
     DampingFilter mDampingFilter;
+    ChaosLFO mScatterLFO[8];
     
     float input[8];
     float output[8];
     float feedback[8];
+    
+    float *noise[8];
     
 public:
     
     MatrixReverb8x8_Core()
     {
         
+        maxBlockSize = 16384;
+        
+        for( int i = 0; i < 8; i++ )
+        {
+            noise[i] = NULL;
+        }
+        
     }
     
     ~MatrixReverb8x8_Core()
     {
+        
+        for( int i = 0; i < 8; i++ )
+        {
+            free( noise[i] );
+        }
+        
+    }
+    
+    void setMaxBlockSize( int inMaxBlockSize )
+    {
+        
+        if( inMaxBlockSize > 0 )
+            maxBlockSize = inMaxBlockSize;
         
     }
     
@@ -61,8 +92,13 @@ public:
         
         for( int i = 0; i < 8; i++ )
         {
-            mDelay[i].setMaxDelayTime( delayTime[10] * 10.f );
+            mDelay[i].setMaxDelayTime( delayTime[10] * 10.f + 0.010f );
             mDelay[i].setSampleRate( inSampleRate );
+            
+            mScatterLFO[i].setSampleRate( inSampleRate );
+            mScatterLFO[i].setFrequency( 5.f );
+            
+            noise[i] = (float*)malloc( maxBlockSize * sizeof(float) );
         }
         
         mDampingFilter.setSampleRate( inSampleRate );
@@ -78,6 +114,8 @@ public:
         {
             mDelay[i].reset();
             feedback[i] = 0.f;
+            
+            mScatterLFO[i].reset();
         }
         
         mDampingFilter.reset();
@@ -100,8 +138,15 @@ public:
         
     }
     
-    void processBlock( float *inBlock, float *inSize, float *inDecay, float *inModulation, float *inLowDamping, float *inHighDamping, float inDelayTimeOffset, int inInterpolation, float *outBlock, int blockSize )
+    void processBlock( float *inBlock, float *inSize, float *inDecay, float *inScattering, float *inModulation, float *inLowDamping, float *inHighDamping, float inDelayTimeOffset, int inInterpolation, float *outBlock, int blockSize )
     {
+        
+        // noise
+        
+        for( int i = 0; i < 8; i++ )
+        {
+            mScatterLFO[i].generateBlock( noise[i], blockSize );
+        }
                 
         for( int frame = 0; frame < blockSize; frame++ )
         {
@@ -118,6 +163,14 @@ public:
             float time5 = delayTime[8]  * timeScale - inDelayTimeOffset;
             float time6 = delayTime[9]  * timeScale + inDelayTimeOffset;
             float time7 = delayTime[10] * timeScale - inDelayTimeOffset;
+            
+            time1 += 0.05f * time1 * inScattering[frame] * noise[1][frame];
+            time2 += 0.05f * time2 * inScattering[frame] * noise[2][frame];
+            time3 += 0.05f * time3 * inScattering[frame] * noise[3][frame];
+            time4 += 0.05f * time4 * inScattering[frame] * noise[4][frame];
+            time5 += 0.05f * time5 * inScattering[frame] * noise[5][frame];
+            time6 += 0.05f * time6 * inScattering[frame] * noise[6][frame];
+            time7 += 0.05f * time7 * inScattering[frame] * noise[7][frame];
             
             // damping
             
@@ -141,7 +194,7 @@ public:
             
             // run the delays
             
-            output[0] = mDelay[0].processFrame( input[0], time0 + inModulation[frame], 0.f, inInterpolation );
+            output[0] = mDelay[0].processFrame( input[0], time0, 0.f, inInterpolation );
             output[1] = mDelay[1].processFrame( input[1], time1 - inModulation[frame], 0.f, inInterpolation );
             output[2] = mDelay[2].processFrame( input[2], time2 + inModulation[frame], 0.f, inInterpolation );
             output[3] = mDelay[3].processFrame( input[3], time3 - inModulation[frame], 0.f, inInterpolation );
@@ -215,6 +268,9 @@ public:
         if( inMaxBlockSize > 0 )
             maxBlockSize = inMaxBlockSize;
         
+        mMatrixReverbL.setMaxBlockSize( maxBlockSize );
+        mMatrixReverbR.setMaxBlockSize( maxBlockSize );
+        
     }
     
     void setSampleRate( float inSampleRate )
@@ -251,7 +307,7 @@ public:
         
     }
     
-    void processBlock( float *inBlockL, float *inBlockR, float *inPreDelayTime, float *inSize, float *inDecay, float *inModFrequency, float *inModDepth, float *inLowDamping, float *inHighDamping, int inInterpolation, float *outBlockL, float *outBlockR, int blockSize )
+    void processBlock( float *inBlockL, float *inBlockR, float *inPreDelayTime, float *inSize, float *inDecay, float *inScattering, float *inModFrequency, float *inModDepth, float *inLowDamping, float *inHighDamping, int inInterpolation, float *outBlockL, float *outBlockR, int blockSize )
     {
         
         if( blockSize > maxBlockSize )
@@ -292,10 +348,10 @@ public:
         
         // run the reverb
         
-        mMatrixReverbL.processBlock( outBlockL, inSize, decay, modulation, inLowDamping, inHighDamping, -0.0005f, inInterpolation, outBlockL, blockSize );
+        mMatrixReverbL.processBlock( outBlockL, inSize, decay, inScattering, modulation, inLowDamping, inHighDamping, -0.0005f, inInterpolation, outBlockL, blockSize );
         
         if( stereo )
-            mMatrixReverbR.processBlock( outBlockR, inSize, decay, modulation, inLowDamping, inHighDamping, +0.0005f, inInterpolation, outBlockR, blockSize );
+            mMatrixReverbR.processBlock( outBlockR, inSize, decay, inScattering, modulation, inLowDamping, inHighDamping, +0.0005f, inInterpolation, outBlockR, blockSize );
         
     }
     

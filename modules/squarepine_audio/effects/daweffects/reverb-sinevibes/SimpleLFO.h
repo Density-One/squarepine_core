@@ -10,6 +10,11 @@
 #ifndef SimpleLFO_h
 #define SimpleLFO_h
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+
 #ifndef SinCosTable_h
 #include "SinCosTable.h"
 #endif

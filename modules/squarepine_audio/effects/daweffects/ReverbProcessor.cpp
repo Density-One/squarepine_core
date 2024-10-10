@@ -71,6 +71,17 @@ ReverbProcessor::ReverbProcessor (int idNum)
                                                                      String txt (percentage);
                                                                      return txt << "%";
                                                                  });
+    NormalisableRange<float> scatterRange = { 0, 1.0f };
+    auto scatter = std::make_unique<NotifiableAudioParameterFloat> ("scattering", "Scattering", sizeRange, 0.75f,
+                                                                    true,// isAutomatable
+                                                                    "Scattering ",
+                                                                    AudioProcessorParameter::genericParameter,
+                                                                    [] (float value, int) -> String
+                                                                    {
+                                                                        int percentage = roundToInt (value * 100);
+                                                                        String txt (percentage);
+                                                                        return txt << "%";
+                                                                    });
     NormalisableRange<float> preDelayRange = { 0, 1.0f };
     auto predelay = std::make_unique<NotifiableAudioParameterFloat> ("preDelay", "PreDelay", preDelayRange, 0.05f,
                                                                      true,// isAutomatable
@@ -153,6 +164,9 @@ ReverbProcessor::ReverbProcessor (int idNum)
     highDampParam = highDamp.get();
     highDampParam->addListener (this);
 
+    scatteringParam = scatter.get();
+    scatteringParam->addListener (this);
+
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
@@ -160,6 +174,7 @@ ReverbProcessor::ReverbProcessor (int idNum)
     layout.add (std::move (filterAmount));
     layout.add (std::move (decay));
     layout.add (std::move (size));
+    layout.add (std::move (scatter));
     layout.add (std::move (predelay));
     layout.add (std::move (modFreq));
     layout.add (std::move (modDepth));
@@ -233,7 +248,7 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
 
     const ScopedLock sl (getCallbackLock());
 
-    matrixReverb.processBlock (chans[0], numChannels > 0 ? chans[1] : NULL, preDelayVector.data(), sizeVector.data(), decayVector.data(), modFrequencyVector.data(), modDepthVector.data(), lowDampVector.data(), highDampVector.data(), 0, chans[0], numChannels > 0 ? chans[1] : NULL, numSamples);
+    matrixReverb.processBlock (chans[0], numChannels > 0 ? chans[1] : NULL, preDelayVector.data(), sizeVector.data(), decayVector.data(), scatteringVector.data(), modFrequencyVector.data(), modDepthVector.data(), lowDampVector.data(), highDampVector.data(), 0, chans[0], numChannels > 0 ? chans[1] : NULL, numSamples);
 
     buffer.applyGain (dry);
     multibandBuffer.applyGain (wet);
@@ -299,6 +314,8 @@ void ReverbProcessor::updateReverbParams (int numSamples)
         FloatVectorOperations::fill (sizeVector.data(), sizeParam->get(), numSamples);
         updateSize (decayVector, numSamples);
         FloatVectorOperations::fill (decayVector.data(), decayParam->get(), numSamples);
+        updateSize (scatteringVector, numSamples);
+        FloatVectorOperations::fill (scatteringVector.data(), scatteringParam->get(), numSamples);
         updateSize (modFrequencyVector, numSamples);
         FloatVectorOperations::fill (modFrequencyVector.data(), modFrequencyParam->get(), numSamples);
         updateSize (modDepthVector, numSamples);
