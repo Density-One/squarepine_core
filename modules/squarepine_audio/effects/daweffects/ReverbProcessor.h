@@ -46,8 +46,6 @@ private:
     NotifiableAudioParameterFloat* highDampParam = nullptr;
 
     MatrixReverb8x8 matrixReverb;
-    AudioBuffer<float> reverbInputBuffer;
-    AudioBuffer<float> reverbOutputBuffer;
 
     std::vector<float> preDelayVector, sizeVector, decayVector, scatteringVector, modFrequencyVector, modDepthVector, lowDampVector, highDampVector;
 

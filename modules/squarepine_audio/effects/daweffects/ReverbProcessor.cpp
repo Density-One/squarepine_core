@@ -242,13 +242,8 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
 
     updateReverbParams (numSamples);
 
-    reverbInputBuffer.setSize (numChannels, numSamples);
-    reverbOutputBuffer.setSize (numChannels, numSamples);
-
     fillMultibandBuffer (buffer);
-
-    reverbInputBuffer.makeCopyOf (multibandBuffer);
-
+  
     auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
@@ -350,14 +345,17 @@ void ReverbProcessor::updateReverbParams (int numSamples)
     {
         auto lowDamp = 20000.f;
         auto time = timeParam->get();
+        auto scattering = 0.25f;
         if (time < 0.5)
             lowDamp = 18000.f;
 
+        if (time < 0.3)
+            scattering = 0.1f;
+
         auto sizeDecay = mapTime (time);
-        constexpr auto scattering = 0.25f;
-        constexpr auto predelay = 0.0f;
+        constexpr auto predelay = 0.001f;
         constexpr auto modFreq = 0.4f;
-        constexpr auto modDepth = 0.25f;
+        constexpr auto modDepth = 0.1f;
         constexpr auto highDamp = 20.f;
 
         const ScopedLock sl (getCallbackLock());
