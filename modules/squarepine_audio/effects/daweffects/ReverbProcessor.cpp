@@ -227,14 +227,16 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
+    float wetLevel = wetDryParam->get();
     float wet;
     float dry;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         bypass = ! fxOnParam->get();
-        wet = wetDryParam->get();
-        dry = 1.f - wetDryParam->get();
+
+        wet = std::sqrt (wetLevel);
+        dry = std::sqrt (1.0f - wetLevel);
     }
 
     if (bypass || isBypassed())
@@ -243,7 +245,7 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     updateReverbParams (numSamples);
 
     fillMultibandBuffer (buffer);
-  
+
     auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
