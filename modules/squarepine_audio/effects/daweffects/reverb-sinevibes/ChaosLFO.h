@@ -22,11 +22,15 @@ private:
     
     float dt;
     
-    float frequency;
-    float phase;
+    float frequency1;
+    float frequency2;
+    float phase1;
+    float phase2;
     
-    float memory;
-    float slope;
+    float memory1;
+    float memory2;
+    float slope1;
+    float slope2;
     
     float value1;
     float value2;
@@ -41,11 +45,15 @@ public:
         
         dt = 1.f / 44100.f;
         
-        frequency = 1.f;
-        phase = 0.f;
+        frequency1 = 1.f;
+        frequency2 = 1.f;
+        phase1 = 0.f;
+        phase2 = 0.f;
         
-        memory = 0.f;
-        slope = 0.f;
+        memory1 = 0.f;
+        memory2 = 0.f;
+        slope1 = 0.f;
+        slope2 = 0.f;
         
         value1 = 0.f;
         value2 = 0.f;
@@ -67,7 +75,8 @@ public:
     void setFrequency( float inFrequency )
     {
         
-        frequency = inFrequency;
+        frequency1 = inFrequency;
+        frequency2 = 5.f * inFrequency;
         
         delta = 1.f - std::expf( - M_PI * inFrequency * dt );
         
@@ -89,32 +98,46 @@ public:
             if( needsToReset )
             {
                 
-                phase = 0.f;
+                phase1 = 0.f;
+                phase2 = 0.f;
                 
-                memory = 2.f * (float)rand()/RAND_MAX - 1.f;
+                memory1 = 2.f * (float)rand()/RAND_MAX - 1.f;
+                memory2 = 2.f * (float)rand()/RAND_MAX - 1.f;
                 
-                float target = 2.f * (float)rand()/RAND_MAX - 1.f;
-                slope = ( target - memory ) * frequency * dt;
+                float target1 = 2.f * (float)rand()/RAND_MAX - 1.f;
+                slope1 = ( target1 - memory1 ) * frequency1 * dt;
+                float target2 = 2.f * (float)rand()/RAND_MAX - 1.f;
+                slope2 = ( target2 - memory2 ) * frequency2 * dt;
                   
                 needsToReset = false;
                 
             }
             
-            phase += frequency * dt;
+            phase1 += frequency1 * dt;
+            phase2 += frequency2 * dt;
                                         
-            memory += slope;
+            memory1 += slope1;
+            memory2 += slope2;
             
-            value1 += delta * ( memory - value1 );
+            value1 += delta * ( 0.35f * memory1 + 0.65f * memory2 - value1 );
             value2 += delta * ( value1 - value2 );
             
             outBlock[frame] = value2;
             
-            if( phase >= 1.f )
+            if( phase1 >= 1.f )
             {
-                phase -= 1.f;
+                phase1 -= 1.f;
                 
-                float target = 2.f * (float)rand()/RAND_MAX - 1.f;
-                slope = ( target - memory ) * frequency * dt;
+                float target1 = 2.f * (float)rand()/RAND_MAX - 1.f;
+                slope1 = ( target1 - memory1 ) * frequency1 * dt;
+            }
+            
+            if( phase2 >= 1.f )
+            {
+                phase2 -= 1.f;
+                
+                float target2 = 2.f * (float)rand()/RAND_MAX - 1.f;
+                slope2 = ( target2 - memory2 ) * frequency2 * dt;
             }
                 
         }

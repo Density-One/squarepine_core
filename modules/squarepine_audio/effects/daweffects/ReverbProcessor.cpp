@@ -250,10 +250,7 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
 
     const ScopedLock sl (getCallbackLock());
 
-    matrixReverb.processBlock (chans[0], numChannels > 0 ? chans[1] : NULL, preDelayVector.data(), sizeVector.data(), decayVector.data(), scatteringVector.data(), modFrequencyVector.data(), modDepthVector.data(), lowDampVector.data(), highDampVector.data(), 0, chans[0], numChannels > 0 ? chans[1] : NULL, numSamples);
-
-    // Reverb comes out extremely hot, duck by -6db/0.5rms
-    multibandBuffer.applyGain (0.5f);
+    matrixReverb.processBlock (chans[0], numChannels > 0 ? chans[1] : NULL, preDelayVector.data(), decayVector.data(), scatteringVector.data(), modFrequencyVector.data(), modDepthVector.data(), lowDampVector.data(), highDampVector.data(), 0, chans[0], numChannels > 0 ? chans[1] : NULL, numSamples);
 
     lpf.processBuffer (multibandBuffer, midi);
     hpf.processBuffer (multibandBuffer, midi);

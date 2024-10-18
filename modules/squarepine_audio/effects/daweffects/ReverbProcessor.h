@@ -26,10 +26,9 @@ public:
     void parameterValueChanged (int paramNum, float value) override;
     void parameterGestureChanged (int, bool) override {}
 private:
-    float interpolate(float input, float x1, float x2, float y1, float y2);
-    float mapTime(float inputPercentage);
-    
-    
+    float interpolate (float input, float x1, float x2, float y1, float y2);
+    float mapTime (float inputPercentage);
+
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     NotifiableAudioParameterFloat* filterParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
@@ -45,7 +44,7 @@ private:
     NotifiableAudioParameterFloat* lowDampParam = nullptr;
     NotifiableAudioParameterFloat* highDampParam = nullptr;
 
-    MatrixReverb8x8 matrixReverb;
+    NaturalReverb8x8 matrixReverb;
 
     std::vector<float> preDelayVector, sizeVector, decayVector, scatteringVector, modFrequencyVector, modDepthVector, lowDampVector, highDampVector;
 

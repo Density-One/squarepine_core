@@ -173,6 +173,8 @@ String getInternalProcessorTypeName();
 #include "effects/daweffects/reverb-sinevibes/SinCosTable.h"
 #include "effects/daweffects/reverb-sinevibes/MatrixReverb8x8.h"
 #include "effects/daweffects/reverb-sinevibes/MatrixReverb4x4.h"
+#include "effects/daweffects/reverb-sinevibes/NaturalReverb8x8.h"
+
 //==============================================================================
 
 #include "effects/daweffects/NotifiableAudioParameterFloat.h"
