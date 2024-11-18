@@ -50,15 +50,15 @@
     #elif JUCE_MAC
 
         #if SQUAREPINE_USE_AUFTAKT
-            #include "auftakt/macos/incl/aufTAKT_If.h"
-            #include "auftakt/macos/incl/aufTAKTResultIf.h"
-            #include "auftakt/macos/incl/zplAudioFile.h"
+            #include "auftakt/macos/include/aufTAKT/aufTAKT.h"
+            #include "auftakt/macos/include/zplAudioFile/zplAudioFile.h"
+            #include "auftakt/macos/include/zplVecLib/CommandLineParser.h"
         #endif
 
         #if SQUAREPINE_USE_ELASTIQUE
-            #include "elastique/macos/incl/elastiqueProV3API.h"
-            #include "elastique/macos/incl/elastiqueProV3DirectAPI.h"
-            #include "elastique/macos/incl/zplAudioFile.h"
+            #include "elastique/macos/include/elastiquePro/elastiqueProV3API.h"
+            #include "elastique/macos/include/elastiquePro/elastiqueProV3DirectAPI.h"
+            #include "elastique/macos/include/zplAudioFile/zplAudioFile.h"
         #endif
 
     #endif
