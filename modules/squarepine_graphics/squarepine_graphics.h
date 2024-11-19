@@ -103,7 +103,7 @@ namespace sp
     /** */
     inline void drawFittedText (Graphics& g,
                                 const String& text,
-                                const Rectangle<float>& area,
+                                const juce::Rectangle<float>& area,
                                 Justification justification = Justification::centredLeft,
                                 int maximumNumberOfLines = 1,
                                 float minimumHorizontalScale = 1.0f)

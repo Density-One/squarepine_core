@@ -100,6 +100,10 @@ using AudioDeviceManagerWeakPtr = std::shared_ptr<AudioDeviceManager>;
 String getInternalProcessorTypeName();
 
 //==============================================================================
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+
 #include "core/AudioBufferView.h"
 #include "core/AudioBufferFIFO.h"
 #include "core/AudioUtilities.h"
