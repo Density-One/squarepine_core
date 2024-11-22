@@ -15,6 +15,7 @@ OwnedArray<UnitTest> SquarePineCoreUnitTestGatherer::createTests()
 
    #if SQUAREPINE_COMPILE_UNIT_TESTS
     tests.add (new AngleUnitTests());
+    tests.add (new BackgroundCallerTests());
     tests.add (new BlumBlumShubUnitTests());
     tests.add (new ISAACUnitTests());
     tests.add (new MathsUnitTests());

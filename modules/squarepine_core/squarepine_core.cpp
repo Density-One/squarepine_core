@@ -56,10 +56,12 @@ namespace sp
     #include "text/CountryCodes.cpp"
     #include "text/LanguageHandler.cpp"
     #include "valuetree/JSONToValueTree.cpp"
-
+#if SQUAREPINE_COMPILE_UNIT_TESTS
     #include "unittests/AllocatorUnitTests.cpp"
     #include "unittests/AngleUnitTests.cpp"
+    #include "unittests/BackgroundCallerTests.cpp"
     #include "unittests/MathsUnitTests.cpp"
     #include "unittests/RNGUnitTests.cpp"
+#endif
     #include "unittests/SquarePineCoreUnitTestGatherer.cpp"
-}
+    }
