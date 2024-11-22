@@ -31,13 +31,20 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
+    
+    SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
+    
     //Using the Juce reverb
-    Reverb reverb;
+    //Reverb reverb;
+    FDN reverb;
+    
     void updateReverbParams();
 
     int idNumber = 1;
     DigitalFilter hpf;
     DigitalFilter lpf;
+    
+    DigitalFilter dampLPF;
 };
 
 }

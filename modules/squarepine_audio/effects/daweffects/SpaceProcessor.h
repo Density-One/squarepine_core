@@ -37,7 +37,14 @@ private:
     NotifiableAudioParameterFloat* otherParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
     //Using the Juce reverb
-    Reverb reverb;
+    //Reverb reverb;
+    FDN reverb;
+    DigitalFilter dampLPF;
+    
+    SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
+    
+    AudioBuffer<float> processedBuffer;
+    
     void updateReverbParams();
 
     DigitalFilter filter;

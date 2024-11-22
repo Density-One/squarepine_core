@@ -88,6 +88,7 @@ String getInternalProcessorTypeName()
 #include "effects/daweffects/PingPongProcessor.cpp"
 #include "effects/daweffects/SpiralProcessor.cpp"
 #include "effects/daweffects/ShimmerProcessor.cpp"
+#include "effects/daweffects/FDN.cpp"
 #include "effects/daweffects/ReverbProcessor.cpp"
 #include "effects/daweffects/TransEffectProcessor.cpp"
 #include "effects/daweffects/LFOFilterProcessor.cpp"
