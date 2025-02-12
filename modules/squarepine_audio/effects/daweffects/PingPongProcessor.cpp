@@ -89,17 +89,23 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
     const int numSamples = buffer.getNumSamples();
 
     float wet;
-    bool bypass;
+    bool off;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        bypass = ! fxOnParam->get();
+        off = ! fxOnParam->get();
     }
 
-    if (bypass || isBypassed())
+    if (isBypassed())
         return;
 
-    fillMultibandBuffer (buffer);
+    if (! off)
+        fillMultibandBuffer (buffer);
+    else
+    {
+        // Clear the multiband buffer when off to prevent feedback
+        multibandBuffer.clear();
+    }
 
     for (int n = 0; n < numSamples; ++n)
     {

@@ -102,9 +102,9 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     delayUnit2.setDelaySamples (initialDelayTime);
     unit1SteppedDelayTime = initialDelayTime;
     unit2SteppedDelayTime = initialDelayTime;
-    
+
     phase.setFrequency (lfoFreq);
-    
+
     setEffectiveInTimeDomain (true);
 }
 
@@ -133,31 +133,51 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
 
-    bool bypass;
+    bool off;
     float colour;
     {
         const ScopedLock sl (getCallbackLock());
         wetTarget = wetDryParam->get();
         feedbackTarget = feedbackParam->get();
-        bypass = ! fxOnParam->get();
+        off = ! fxOnParam->get();
         colour = echoColourParam->get();
     }
 
-    if (bypass || isBypassed())
+    if (isBypassed())
         return;
 
-    if (abs(colour) < 0.01f)
+    if (abs (colour) < 0.01f)
         wetTarget = 0.f;
-    
+
+    // Store original input
+    AudioBuffer<float> dryBuffer;
+    dryBuffer.makeCopyOf (buffer);
+
+    // If effect is off, clear the buffer to prevent new audio going into delay
+    // but keep processing to maintain the tail
+    if (off)
+    {
+        buffer.clear();
+    }
+
+    // Process through delay line (this will process existing delay tail even when off)
     for (int c = 0; c < numChannels; ++c)
     {
-        //phase.setCurrentAngle(effectPhaseRelativeToProjectDownBeat,c);
         for (int n = 0; n < numSamples; ++n)
         {
-            float x = buffer.getWritePointer (c)[n];
-            float y = getDelayedSample(x,c);
+            float x = off ? 0.0f : dryBuffer.getWritePointer (c)[n];// No new input when off
+            float y = getDelayedSample (x, c);
 
             buffer.getWritePointer (c)[n] = y;
+        }
+    }
+
+    // When off, restore dry signal and add delay tail
+    if (off)
+    {
+        for (int c = 0; c < numChannels; ++c)
+        {
+            buffer.addFrom (c, 0, dryBuffer, c, 0, numSamples, 1.0f);
         }
     }
 }
@@ -211,9 +231,9 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
         {//Time
             // primaryDelay
             float samplesOfDelay = value / 1000.f * static_cast<float> (sampleRate);
-            
+
             delayTime.setTargetValue (samplesOfDelay);
-            
+
             if (isSteppedTime)
             {
                 // if we are currently using buffer1, then we change the time of buffer2 before crossfade
@@ -221,16 +241,15 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
                     unit2SteppedDelayTime = samplesOfDelay;
                 else
                     unit1SteppedDelayTime = samplesOfDelay;
-                
-                duringCrossfade = true; // if we are using steppedTime, and a change to time has occurred, then we need to start a crossfade
+
+                duringCrossfade = true;// if we are using steppedTime, and a change to time has occurred, then we need to start a crossfade
                 crossfadeIndex = 0;
             }
-            
+
             break;
         }
     }
 }
-
 
 float DubEchoProcessor::getDelayedSample (float x, int c)
 {
@@ -245,7 +264,7 @@ float DubEchoProcessor::getDelayedSample (float x, int c)
 
         auto y_filter = hpf.processSample (y, c);
         y_filter = lpf.processSample (y_filter, c);
-        
+
         float lfoSample = phase.getNextSample (c);
         float modDelay = static_cast<float> (DEPTH * sin (lfoSample));
         float sampleDelayTime = delayTime.getNextValue();
@@ -265,21 +284,19 @@ float DubEchoProcessor::getDelayFromDoubleBuffer (float x, int c)
     }
     else
     {
-        
         float ampA = 0.f, ampB = 1.f;
         if (usingDelayBuffer1)
         {
             ampA = 1.f;
             ampB = 0.f;
         }
-                
+
         return getDelayWithAmp (x, c, ampA, ampB);
     }
 }
 
 float DubEchoProcessor::getDelayDuringCrossfade (float x, int c)
 {
-    
     float amp = static_cast<float> (crossfadeIndex) / static_cast<float> (LENGTHOFCROSSFADE);
     float ampA;
     float ampB;
@@ -298,15 +315,13 @@ float DubEchoProcessor::getDelayDuringCrossfade (float x, int c)
     if (crossfadeIndex == LENGTHOFCROSSFADE)
     {
         crossfadeIndex = 0;
-        duringCrossfade = false; // we've reached the end of this crossfade for this time change
-        crossFadeFrom1to2 = !crossFadeFrom1to2; // next time we do a crossfade, it should be from the opposite buffers
-        usingDelayBuffer1 = !usingDelayBuffer1;
+        duringCrossfade = false;// we've reached the end of this crossfade for this time change
+        crossFadeFrom1to2 = ! crossFadeFrom1to2;// next time we do a crossfade, it should be from the opposite buffers
+        usingDelayBuffer1 = ! usingDelayBuffer1;
     }
-    
-    return getDelayWithAmp (x, c, ampA, ampB);
-    
-}
 
+    return getDelayWithAmp (x, c, ampA, ampB);
+}
 
 float DubEchoProcessor::getDelayWithAmp (float x, int c, float ampA, float ampB)
 {

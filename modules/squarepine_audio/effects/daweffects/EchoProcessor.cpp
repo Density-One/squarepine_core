@@ -94,16 +94,22 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    bool bypass;
+    bool off;
     {
         const ScopedLock lock (getCallbackLock());
-        bypass = ! fxOnParam->get();
+        off = ! fxOnParam->get();
     }
 
-    if (bypass || isBypassed())
+    if (isBypassed())
         return;
 
-    fillMultibandBuffer (buffer);
+    if (! off)
+        fillMultibandBuffer (buffer);
+    else
+    {
+        // Clear the multiband buffer when off to prevent feedback
+        multibandBuffer.clear();
+    }
 
     float wet, x, y;
     wet = wetDry.getNextValue();

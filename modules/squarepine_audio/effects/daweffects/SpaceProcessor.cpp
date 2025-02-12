@@ -73,7 +73,6 @@ SpaceProcessor::SpaceProcessor (int idNum)
 
     setPrimaryParameter (reverbColourParam);
     setEffectiveInTimeDomain (true);
-
 }
 
 SpaceProcessor::~SpaceProcessor()
@@ -99,18 +98,31 @@ void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    bool bypass;
+    bool off;
     {
         const ScopedLock sl (getCallbackLock());
-        bypass = ! fxOnParam->get();
+        off = ! fxOnParam->get();
     }
 
-    if (bypass || isBypassed())
+    if (isBypassed())
         return;
 
     updateReverbParams();
 
-    filter.processBuffer (buffer, midiBuffer);
+    // Store dry signal
+    AudioBuffer<float> inputBuffer;
+    inputBuffer.makeCopyOf (buffer);
+
+    // Only process new audio through filter if effect is on
+    if (! off)
+    {
+        filter.processBuffer (buffer, midiBuffer);
+    }
+    else
+    {
+        // Clear the buffer before reverb processing when off
+        buffer.clear();
+    }
 
     auto chans = buffer.getArrayOfWritePointers();
 
@@ -129,6 +141,14 @@ void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         default:
             break;
     }
+
+    if (off)
+    {
+        // When off, restore input signal and add reverb tail
+        buffer.addFrom (0, 0, inputBuffer, 0, 0, numSamples, 1.0f);
+        if (numChannels > 1)
+            buffer.addFrom (1, 0, inputBuffer, 1, 0, numSamples, 1.0f);
+    }
 }
 
 const String SpaceProcessor::getName() const { return TRANS ("Space"); }
@@ -139,10 +159,6 @@ bool SpaceProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
 void SpaceProcessor::parameterValueChanged (int id, float value)
 {
-    if (id == 1)
-    {
-        setBypass (value > 0);
-    }
     if (id == 3)// Color
     {
         if (value > 0)
@@ -172,13 +188,12 @@ void SpaceProcessor::updateReverbParams()
     localParams.damping = 0.2f;//1.f - reverbColourParam->get();
     localParams.wetLevel = wetDryParam->get();
     localParams.dryLevel = 1.f - wetDryParam->get();
-    if (abs(reverbColourParam->get()) < 0.01f)
+    if (abs (reverbColourParam->get()) < 0.01f)
     {
         localParams.wetLevel = 0.f;
         localParams.dryLevel = 1.f;
     }
-    
-    
+
     localParams.width = 1;
     localParams.freezeMode = 0;
 

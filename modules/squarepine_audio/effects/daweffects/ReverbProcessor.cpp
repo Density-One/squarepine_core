@@ -230,36 +230,65 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     float wetLevel = wetDryParam->get();
     float wet;
     float dry;
-    bool bypass;
+    bool off;
     {
         const ScopedLock sl (getCallbackLock());
-        bypass = ! fxOnParam->get();
-
+        off = ! fxOnParam->get();
         wet = sin (wetLevel * juce::MathConstants<float>::pi / 2);
         dry = cos (wetLevel * juce::MathConstants<float>::pi / 2);
     }
 
-    if (bypass || isBypassed())
+    // Early return for bypass
+    if (isBypassed())
         return;
 
     updateReverbParams (numSamples);
 
-    fillMultibandBuffer (buffer);
+    // Only add new audio to reverb if effect is on
+    if (! off)
+        fillMultibandBuffer (buffer);
+    else
+    {
+        // Clear the multiband buffer when off to prevent feedback
+        multibandBuffer.clear();
+    }
 
     auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
-    matrixReverb.processBlock (chans[0], numChannels > 0 ? chans[1] : NULL, preDelayVector.data(), decayVector.data(), scatteringVector.data(), modFrequencyVector.data(), modDepthVector.data(), lowDampVector.data(), highDampVector.data(), 0, chans[0], numChannels > 0 ? chans[1] : NULL, numSamples);
+    matrixReverb.processBlock (chans[0],
+                               numChannels > 0 ? chans[1] : NULL,
+                               preDelayVector.data(),
+                               decayVector.data(),
+                               scatteringVector.data(),
+                               modFrequencyVector.data(),
+                               modDepthVector.data(),
+                               lowDampVector.data(),
+                               highDampVector.data(),
+                               0,
+                               chans[0],
+                               numChannels > 0 ? chans[1] : NULL,
+                               numSamples);
 
     lpf.processBuffer (multibandBuffer, midi);
     hpf.processBuffer (multibandBuffer, midi);
 
-    buffer.applyGain (dry);
-    multibandBuffer.applyGain (wet);
-
-    for (int c = 0; c < numChannels; ++c)
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
+    if (! off)
+    {
+        // Normal wet/dry mix when effect is on
+        buffer.applyGain (dry);
+        multibandBuffer.applyGain (wet);
+        for (int c = 0; c < numChannels; ++c)
+            buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
+    }
+    else
+    {
+        // When off: Keep dry signal at full volume, but still allow reverb tail
+        multibandBuffer.applyGain (wet);
+        for (int c = 0; c < numChannels; ++c)
+            buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
+    }
 }
 
 const String ReverbProcessor::getName() const { return TRANS ("Reverb"); }
