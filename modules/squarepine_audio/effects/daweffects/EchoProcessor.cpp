@@ -90,7 +90,6 @@ void EchoProcessor::prepareToPlay (double Fs, int bufferSize)
 }
 void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    //TODO
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
@@ -102,6 +101,10 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
 
     if (isBypassed())
         return;
+
+    // Store original signal
+    AudioBuffer<float> dryBuffer;
+    dryBuffer.makeCopyOf (buffer);
 
     if (! off)
         fillMultibandBuffer (buffer);
@@ -122,10 +125,21 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
             x = multibandBuffer.getWritePointer (c)[s];
             y = getDelayedSample (x, c);
             multibandBuffer.getWritePointer (c)[s] = wet * y;
-            buffer.getWritePointer (c)[s] *= (1.f - wet);
+
+            if (! off)
+            {
+                // Only apply dry mix when effect is on
+                buffer.getWritePointer (c)[s] *= (1.f - wet);
+            }
+            else
+            {
+                // When off, restore original signal
+                buffer.getWritePointer (c)[s] = dryBuffer.getWritePointer (c)[s];
+            }
         }
     }
 
+    // Add processed signal
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }

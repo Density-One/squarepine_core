@@ -99,6 +99,10 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
     if (isBypassed())
         return;
 
+    // Store original signal
+    AudioBuffer<float> dryBuffer;
+    dryBuffer.makeCopyOf (buffer);
+
     if (! off)
         fillMultibandBuffer (buffer);
     else
@@ -120,11 +124,22 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
         multibandBuffer.getWritePointer (0)[n] = wetSmooth * yL;
         multibandBuffer.getWritePointer (1)[n] = wetSmooth * yR;
 
-        float drySmooth = 1.f - wetSmooth;
-        buffer.getWritePointer (0)[n] *= (drySmooth);
-        buffer.getWritePointer (1)[n] *= (drySmooth);
+        if (! off)
+        {
+            // Only apply dry mix when effect is on
+            float drySmooth = 1.f - wetSmooth;
+            buffer.getWritePointer (0)[n] *= drySmooth;
+            buffer.getWritePointer (1)[n] *= drySmooth;
+        }
+        else
+        {
+            // When off, restore original signal
+            buffer.getWritePointer (0)[n] = dryBuffer.getWritePointer (0)[n];
+            buffer.getWritePointer (1)[n] = dryBuffer.getWritePointer (1)[n];
+        }
     }
 
+    // Add processed signal
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
