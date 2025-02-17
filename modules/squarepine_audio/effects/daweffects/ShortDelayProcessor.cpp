@@ -1,4 +1,4 @@
-namespace djdawprocessor
+ namespace djdawprocessor
 {
 
 ShortDelayProcessor::ShortDelayProcessor (int idNum)
@@ -86,13 +86,14 @@ ShortDelayProcessor::~ShortDelayProcessor()
 }
 
 //============================================================================== Audio processing
-void ShortDelayProcessor::prepareToPlay (double sampleRate, int)
+void ShortDelayProcessor::prepareToPlay (double sampleRate, int bufferSize)
 {
     Fs = static_cast<float> (sampleRate);
     delayUnit.setFs (Fs);
     wetDry.reset (Fs, 0.5f);
     delayTime.reset (Fs, 0.5f);
     delayUnit.setDelaySamples (delayTime.getNextValue() / 1000.f * Fs);
+    dryBuffer.setSize (2, bufferSize);
 }
 void ShortDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -115,7 +116,6 @@ void ShortDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBu
         return;
 
     // Store original input
-    AudioBuffer<float> dryBuffer;
     dryBuffer.makeCopyOf (buffer);
 
     float wet, dry, x, y;

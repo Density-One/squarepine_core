@@ -88,13 +88,15 @@ LongDelayProcessor::~LongDelayProcessor()
 }
 
 //============================================================================== Audio processing
-void LongDelayProcessor::prepareToPlay (double sampleRate, int)
+void LongDelayProcessor::prepareToPlay (double sampleRate, int bufferSize)
 {
     Fs = static_cast<float> (sampleRate);
     delayUnit.setFs (Fs);
     wetDry.reset (Fs, 0.5f);
     delayTime.reset (Fs, 0.5f);
     delayUnit.setDelaySamples (delayTime.getNextValue() / 1000.f * Fs);
+    dryBuffer.setSize(2,bufferSize);
+
 }
 void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -117,7 +119,6 @@ void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuf
         return;
 
     // Store original input
-    AudioBuffer<float> dryBuffer;
     dryBuffer.makeCopyOf (buffer);
 
     float wet, dry, x, y;

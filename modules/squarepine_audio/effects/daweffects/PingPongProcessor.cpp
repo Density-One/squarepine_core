@@ -82,6 +82,8 @@ void PingPongProcessor::prepareToPlay (double sampleRate, int bufferSize)
     delayRight.setDelaySamples (samplesOfDelay);
     delayLeft2.setDelaySamples (samplesOfDelay);
     delayRight2.setDelaySamples (samplesOfDelay);
+    dryBuffer.setSize(2, bufferSize);
+
 }
 void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -100,7 +102,6 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
         return;
 
     // Store original signal
-    AudioBuffer<float> dryBuffer;
     dryBuffer.makeCopyOf (buffer);
 
     if (! off)

@@ -42,6 +42,9 @@ private:
 
     ModulatedDelay delayLeft2;
     ModulatedDelay delayRight2;
+    
+    AudioBuffer<float> dryBuffer;
+
 
     const float AMPSUMCHAN = 0.7071f;
     float z = 0.f;

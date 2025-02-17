@@ -52,6 +52,7 @@ private:
 
     ModulatedDelay delayBlock;
     ModulatedDelay delayUnit2;// used for stepped processing for cross-fade to avoid doppler changes
+    AudioBuffer<float> dryBuffer;
 
     float feedbackSample[2] = { 0.f };
     float feedbackUnit2[2] = { 0.f };

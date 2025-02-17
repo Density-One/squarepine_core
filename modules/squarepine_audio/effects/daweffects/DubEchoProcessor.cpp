@@ -118,7 +118,7 @@ DubEchoProcessor::~DubEchoProcessor()
 }
 
 //============================================================================== Audio processing
-void DubEchoProcessor::prepareToPlay (double Fs, int /* bufferSize */)
+void DubEchoProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     sampleRate = Fs;
     delayBlock.setFs (static_cast<float> (sampleRate));
@@ -126,6 +126,7 @@ void DubEchoProcessor::prepareToPlay (double Fs, int /* bufferSize */)
     delayTime.reset (Fs, 1.f);
     hpf.setFs (sampleRate);
     lpf.setFs (sampleRate);
+    dryBuffer.setSize (2, bufferSize);
 }
 
 void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
@@ -150,7 +151,6 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
         wetTarget = 0.f;
 
     // Store original input
-    AudioBuffer<float> dryBuffer;
     dryBuffer.makeCopyOf (buffer);
 
     // If effect is off, clear the buffer to prevent new audio going into delay

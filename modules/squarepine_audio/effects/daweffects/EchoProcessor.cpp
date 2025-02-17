@@ -85,6 +85,7 @@ void EchoProcessor::prepareToPlay (double Fs, int bufferSize)
     wetDry.reset (Fs, 0.5f);
     delayTime.reset (Fs, 1.f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
+    dryBuffer.setSize (2, bufferSize);
 
     sampleRate = Fs;
 }
@@ -103,7 +104,6 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
         return;
 
     // Store original signal
-    AudioBuffer<float> dryBuffer;
     dryBuffer.makeCopyOf (buffer);
 
     if (! off)

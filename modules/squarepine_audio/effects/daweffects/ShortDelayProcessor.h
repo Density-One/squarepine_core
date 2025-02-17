@@ -35,6 +35,7 @@ private:
     SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime { 200.0f };
 
     FractionalDelay delayUnit;
+    AudioBuffer<float> dryBuffer;
 
     float z[2] = { 0.f };
 
