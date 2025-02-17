@@ -219,6 +219,8 @@ void ReverbProcessor::prepareToPlay (double Fs, int bufferSize)
     matrixReverb.setSampleRate (static_cast<float> (Fs));
     hpf.setFs (Fs);
     lpf.setFs (Fs);
+    
+    dryBuffer.setSize(2, bufferSize);
 }
 void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
@@ -241,6 +243,9 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     // Early return for bypass
     if (isBypassed())
         return;
+
+    // Store original signal
+    dryBuffer.makeCopyOf (buffer);
 
     updateReverbParams (numSamples);
 
@@ -277,7 +282,14 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     if (! off)
     {
         // Normal wet/dry mix when effect is on
-        buffer.applyGain (dry);
+        buffer.clear();// Clear buffer before adding wet/dry mix
+
+        // Add dry portion
+        buffer.addFrom (0, 0, dryBuffer, 0, 0, numSamples, dry);
+        if (numChannels > 1)
+            buffer.addFrom (1, 0, dryBuffer, 1, 0, numSamples, dry);
+
+        // Add wet portion
         multibandBuffer.applyGain (wet);
         for (int c = 0; c < numChannels; ++c)
             buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
@@ -285,6 +297,7 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     else
     {
         // When off: Keep dry signal at full volume, but still allow reverb tail
+        buffer.makeCopyOf (dryBuffer);// Restore dry signal at full volume
         multibandBuffer.applyGain (wet);
         for (int c = 0; c < numChannels; ++c)
             buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
@@ -338,8 +351,6 @@ float ReverbProcessor::interpolate (float input, float x1, float x2, float y1, f
 }
 float ReverbProcessor::mapTime (float inputPercentage)
 {
-    inputPercentage = std::clamp (inputPercentage, 0.0f, 1.0f);// Ensure input is between 0 and 1
-
     inputPercentage = std::clamp (inputPercentage, 0.0f, 1.0f);// Ensure input is between 0 and 1
 
     // Normalized output values between 0 and 1 corresponding to 100, 85, 57, 30, 15, and 0
