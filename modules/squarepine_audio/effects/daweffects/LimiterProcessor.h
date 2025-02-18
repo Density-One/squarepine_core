@@ -61,7 +61,7 @@ private:
     float thresh = -36.0f;// threshold - dB Value
     float linThresh = pow (10.f, thresh / 20.f);
     float ratio = 100.0f;// 1 = "1:1", 2 = "2:1"
-    float knee = 5.f;// Knee width in dB
+    float knee = 1.5f;// Knee width in dB
 
     // Variables for Response Time
     float attack = 0.06f;// Time in seconds
