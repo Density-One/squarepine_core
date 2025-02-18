@@ -281,6 +281,10 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
                                numChannels > 0 ? chans[1] : NULL,
                                numSamples);
 
+    // the reverb comes out fairly "hot" compared to the pioneer counterparts so we need to apply -3db gain staging
+    //gain = 10^(-3/20) ≈ 0.7079
+    multibandBuffer.applyGain(0.7079f);
+    
     lpf.processBuffer (multibandBuffer, midi);
     hpf.processBuffer (multibandBuffer, midi);
 
