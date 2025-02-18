@@ -54,7 +54,8 @@ private:
     int idNumber = 1;
     DigitalFilter hpf;
     DigitalFilter lpf;
-    
+    DigitalFilter lowCut;
+
     AudioBuffer<float> dryBuffer;
 };
 

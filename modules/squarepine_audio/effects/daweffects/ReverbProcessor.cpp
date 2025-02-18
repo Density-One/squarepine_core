@@ -195,6 +195,8 @@ ReverbProcessor::ReverbProcessor (int idNum)
     hpf.setFreq (200.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
+    lowCut.setFilterType (DigitalFilter::FilterType::HPF);
+    lowCut.setFreq (200.f);
 
     setEffectiveInTimeDomain (true);
     //   setIsInSteppedTimeMode (true);
@@ -219,8 +221,9 @@ void ReverbProcessor::prepareToPlay (double Fs, int bufferSize)
     matrixReverb.setSampleRate (static_cast<float> (Fs));
     hpf.setFs (Fs);
     lpf.setFs (Fs);
-    
-    dryBuffer.setSize(2, bufferSize);
+    lowCut.setFs (Fs);
+
+    dryBuffer.setSize (2, bufferSize);
 }
 void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
@@ -261,6 +264,8 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
+
+    lowCut.processBuffer (multibandBuffer, midi);
 
     matrixReverb.processBlock (chans[0],
                                numChannels > 0 ? chans[1] : NULL,
