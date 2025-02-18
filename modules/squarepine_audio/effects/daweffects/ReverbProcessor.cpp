@@ -196,7 +196,7 @@ ReverbProcessor::ReverbProcessor (int idNum)
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
     lowCut.setFilterType (DigitalFilter::FilterType::HPF);
-    lowCut.setFreq (200.f);
+    lowCut.setFreq (100.f);
 
     setEffectiveInTimeDomain (true);
     //   setIsInSteppedTimeMode (true);
