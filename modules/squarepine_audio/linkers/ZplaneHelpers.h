@@ -35,15 +35,15 @@
                 ZPLANE_MAKE_INCLUDE (JUCE_CONCAT (a, b))
 
         #if SQUAREPINE_USE_AUFTAKT
-            #include ZPLANE_INCLUDE (SQUAREPINE_AUFTAKT_PATH, win/incl/aufTAKT_If.h)
-            #include ZPLANE_INCLUDE (SQUAREPINE_AUFTAKT_PATH, win/incl/aufTAKTResultIf.h)
-            #include ZPLANE_INCLUDE (SQUAREPINE_AUFTAKT_PATH, win/incl/zplAudioFile.h)
+            #include ZPLANE_INCLUDE (SQUAREPINE_AUFTAKT_PATH, win/include/aufTAKT/aufTAKT.h)
+            #include ZPLANE_INCLUDE (SQUAREPINE_AUFTAKT_PATH, win/include/zplAudioFile/zplAudioFile.h)
+            #include ZPLANE_INCLUDE (SQUAREPINE_AUFTAKT_PATH, win/include/zplVecLib/CommandLineParser.h)
         #endif
 
         #if SQUAREPINE_USE_ELASTIQUE
-            #include ZPLANE_INCLUDE (SQUAREPINE_ELASTIQUE_PATH, win/incl/elastiqueProV3API.h)
-            #include ZPLANE_INCLUDE (SQUAREPINE_ELASTIQUE_PATH, win/incl/elastiqueProV3DirectAPI.h)
-            #include ZPLANE_INCLUDE (SQUAREPINE_ELASTIQUE_PATH, win/incl/zplAudioFile.h)
+            #include ZPLANE_INCLUDE (SQUAREPINE_ELASTIQUE_PATH, win/include/elastiquePro/elastiqueProV3API.h)
+            #include ZPLANE_INCLUDE (SQUAREPINE_ELASTIQUE_PATH, win/include/elastiquePro/elastiqueProV3DirectAPI.h)
+            #include ZPLANE_INCLUDE (SQUAREPINE_ELASTIQUE_PATH, win/include/zplAudioFile/zplAudioFile.h)
         #endif
 
     #elif JUCE_MAC

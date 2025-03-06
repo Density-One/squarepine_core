@@ -16,12 +16,6 @@
 
     #undef SQUAREPINE_AUFTAKT_VC_PATH
 
-   #if _MSC_VER >= 1900
-    #define SQUAREPINE_AUFTAKT_VC_PATH "VC16/"
-   #elif _MSC_VER >= 1800
-    #define SQUAREPINE_AUFTAKT_VC_PATH "VC15/"
-   #endif
-
     #undef SQUAREPINE_AUFTAKT_DR_PATH
    #if JUCE_DEBUG
     #define SQUAREPINE_AUFTAKT_DR_PATH "Debug/"

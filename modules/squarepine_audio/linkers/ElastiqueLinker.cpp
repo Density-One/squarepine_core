@@ -12,11 +12,6 @@
 
     #undef SQUAREPINE_ELASTIQUE_VC_PATH
 
-   #if _MSC_VER >= 1900
-    #define SQUAREPINE_ELASTIQUE_VC_PATH "VC16/"
-   #elif _MSC_VER >= 1800
-    #define SQUAREPINE_ELASTIQUE_VC_PATH "VC15/"
-   #endif
 
     #undef SQUAREPINE_ELASTIQUE_DR_PATH
    #if JUCE_DEBUG
